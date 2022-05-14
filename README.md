@@ -1,0 +1,1 @@
+GitHub repo for the Creative Menu mod: a mod that adds the possibility of getting all and every block, item, etc. in cyubeVR, without any need to do survival stuff. Meant for people who want to build things with no restrictions.
