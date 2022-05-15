@@ -19,8 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Misc.cpp" />
+    <ClInclude Include="Source\CMenu.h" />
     <ClInclude Include="Source\GameAPI.cpp" />
+    <ClCompile Include="Source\CMenu.cpp" />
     <ClCompile Include="Source\GameFunctions.cpp" />
+    <ClInclude Include="Source\Misc.h" />
     <ClInclude Include="Source\Mod.cpp" />
     <ClCompile Include="Source\Internals.cpp" />
   </ItemGroup>
