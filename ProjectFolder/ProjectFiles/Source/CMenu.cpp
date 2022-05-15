@@ -117,111 +117,43 @@ void CMenu::updatePage()
 	setPage();
 }
 
-void CMenu::checkAction()
+void CMenu::runCheck()
 {
 	CoordinateInCentimeters fingerTipLocationLeft = GetIndexFingerTipLocation(true);
 	CoordinateInCentimeters fingerTipLocationRight = GetIndexFingerTipLocation(false);
 	CoordinateInCentimeters positionCm = CoordinateInCentimeters(position);
-	if (canClickLeft) {
 
-	}
-	else {
+	clickCheck(fingerTipLocationLeft, canClickLeft, positionCm);
+	clickCheck(fingerTipLocationRight, canClickRight, positionCm);
+	
+}
+
+void CMenu::clickCheck(CoordinateInCentimeters fingerLocation, bool &canClick, CoordinateInCentimeters positionCm)
+{
+	if (canClick) {
 		switch (direction) {
 		case 1:
-			if (fingerTipLocationLeft.X < positionCm.X - 25) {
-				canClickLeft = true;
+			if (fingerLocation.X > positionCm.X - 25) {
+				clickRegister(fingerLocation);
+				canClick = false;
 			}
 			break;
 		case 2:
-			if (fingerTipLocationLeft.X > positionCm.X + 25) {
-				canClickLeft = true;
+			if (fingerLocation.X < positionCm.X + 25) {
+				clickRegister(fingerLocation);
+				canClick = false;
 			}
 			break;
 		case 3:
-			if (fingerTipLocationLeft.Y < positionCm.Y - 25) {
-				canClickLeft = true;
+			if (fingerLocation.Y > positionCm.Y - 25) {
+				clickRegister(fingerLocation);
+				canClick = false;
 			}
 			break;
 		case 4:
-			if (fingerTipLocationLeft.Y > positionCm.Y + 25) {
-				canClickLeft = true;
-			}
-			break;
-		}
-	}
-	Log(L"Checking for right hand");
-	if (canClickRight) {
-		Log(L"Checking which direction: " + std::to_wstring(direction));
-		switch (direction) {
-		case 1:
-			Log(L"Now in case 1");
-			if (fingerTipLocationRight.X > positionCm.X - 25) {
-				Log(L"Now in block. currentPage: " + std::to_wstring(currentPage));
-				switch (currentPage) {
-				case 0: // Main menu
-					if (isBetween(std::pair(512, 1280), std::pair(2047, 2815), fingerTipLocationRight)) {
-						changePage(1);
-					}
-					else if (isBetween(std::pair(2304, 1280), std::pair(3839, 2815), fingerTipLocationRight)) {
-						//currentPage = 2;
-						//updatePage();
-					}
-					break;
-				case 1: // Block menu
-					if (isBetween(std::pair(97, 72), std::pair(635, 610), fingerTipLocationRight)) {
-						changePage(0);
-					}
-					else if (isBetween(std::pair(896, 1144), std::pair(1407, 1655), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Stone, 50);
-					}
-					else if (isBetween(std::pair(1664, 1144), std::pair(2175, 1655), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Grass, 50);
-					}
-					else if (isBetween(std::pair(2432, 1144), std::pair(2943, 1655), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Dirt, 50);
-					}
-					else if (isBetween(std::pair(3200, 1144), std::pair(3711, 1655), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Sand, 50);
-					}
-					else if (isBetween(std::pair(3968, 1144), std::pair(4479, 1655), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::TreeWood, 50);
-					}
-					else if (isBetween(std::pair(4736, 1144), std::pair(5247, 1655), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::TreeWoodBright, 50);
-					}
-					else if (isBetween(std::pair(896, 1912), std::pair(1407, 2423), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::WoodPlank, 50);
-					}
-					else if (isBetween(std::pair(1664, 1912), std::pair(2175, 2423), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::WoodPlankBright, 50);
-					}
-					else if (isBetween(std::pair(2432, 1912), std::pair(2943, 2423), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Ore_Coal, 50);
-					}
-					else if (isBetween(std::pair(3200, 1912), std::pair(3711, 2423), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Ore_Copper, 50);
-					}
-					else if (isBetween(std::pair(3968, 1912), std::pair(4479, 2423), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Ore_Iron, 50);
-					}
-					else if (isBetween(std::pair(4736, 1912), std::pair(5247, 2423), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Ore_Gold, 50);
-					}
-					else if (isBetween(std::pair(896, 2680), std::pair(1407, 3191), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::CrystalBlock, 50);
-					}
-					else if (isBetween(std::pair(1664, 2680), std::pair(2175, 3191), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::Wallstone, 50);
-					}
-					else if (isBetween(std::pair(2432, 2680), std::pair(2943, 3191), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::WoodScaffolding, 50);
-					}
-					else if (isBetween(std::pair(3200, 2680), std::pair(3711, 3191), fingerTipLocationRight)) {
-						AddToInventory(EBlockType::GlassBlock, 50);
-					}
-					break;
-				}
-				canClickRight = false;
+			if (fingerLocation.Y < positionCm.Y + 25) {
+				clickRegister(fingerLocation);
+				canClick = false;
 			}
 			break;
 		}
@@ -229,26 +161,96 @@ void CMenu::checkAction()
 	else {
 		switch (direction) {
 		case 1:
-			if (fingerTipLocationRight.X < positionCm.X - 25) {
-				canClickRight = true;
+			if (fingerLocation.X < positionCm.X - 25) {
+				canClick = true;
 			}
 			break;
 		case 2:
-			if (fingerTipLocationRight.X > positionCm.X + 25) {
-				canClickRight = true;
+			if (fingerLocation.X > positionCm.X + 25) {
+				canClick = true;
 			}
 			break;
 		case 3:
-			if (fingerTipLocationRight.Y < positionCm.Y - 25) {
-				canClickRight = true;
+			if (fingerLocation.Y < positionCm.Y - 25) {
+				canClick = true;
 			}
 			break;
 		case 4:
-			if (fingerTipLocationRight.Y > positionCm.Y + 25) {
-				canClickRight = true;
+			if (fingerLocation.Y > positionCm.Y + 25) {
+				canClick = true;
 			}
 			break;
 		}
+	}
+
+	
+}
+
+void CMenu::clickRegister(CoordinateInCentimeters fingerLocation)
+{
+	switch (currentPage) {
+	case 0: // Main menu
+		if (isBetween(std::pair(512, 1280), std::pair(2047, 2815), fingerLocation)) {
+			changePage(1);
+		}
+		else if (isBetween(std::pair(2304, 1280), std::pair(3839, 2815), fingerLocation)) {
+			//currentPage = 2;
+			//updatePage();
+		}
+		break;
+	case 1: // Block menu
+		if (isBetween(std::pair(97, 72), std::pair(635, 610), fingerLocation)) {
+			changePage(0);
+		}
+		else if (isBetween(std::pair(896, 1144), std::pair(1407, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::StoneMined, 50);
+		}
+		else if (isBetween(std::pair(1664, 1144), std::pair(2175, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::Grass, 50);
+		}
+		else if (isBetween(std::pair(2432, 1144), std::pair(2943, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::Dirt, 50);
+		}
+		else if (isBetween(std::pair(3200, 1144), std::pair(3711, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::Sand, 50);
+		}
+		else if (isBetween(std::pair(3968, 1144), std::pair(4479, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::TreeWood, 50);
+		}
+		else if (isBetween(std::pair(4736, 1144), std::pair(5247, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::TreeWoodBright, 50);
+		}
+		else if (isBetween(std::pair(896, 1912), std::pair(1407, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::WoodPlank, 50);
+		}
+		else if (isBetween(std::pair(1664, 1912), std::pair(2175, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::WoodPlankBright, 50);
+		}
+		else if (isBetween(std::pair(2432, 1912), std::pair(2943, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::Ore_Coal, 50);
+		}
+		else if (isBetween(std::pair(3200, 1912), std::pair(3711, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::Ore_Copper, 50);
+		}
+		else if (isBetween(std::pair(3968, 1912), std::pair(4479, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::Ore_Iron, 50);
+		}
+		else if (isBetween(std::pair(4736, 1912), std::pair(5247, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::Ore_Gold, 50);
+		}
+		else if (isBetween(std::pair(896, 2680), std::pair(1407, 3191), fingerLocation)) {
+			AddToInventory(EBlockType::CrystalBlock, 50);
+		}
+		else if (isBetween(std::pair(1664, 2680), std::pair(2175, 3191), fingerLocation)) {
+			AddToInventory(EBlockType::Wallstone, 50);
+		}
+		else if (isBetween(std::pair(2432, 2680), std::pair(2943, 3191), fingerLocation)) {
+			AddToInventory(EBlockType::WoodScaffolding, 50);
+		}
+		else if (isBetween(std::pair(3200, 2680), std::pair(3711, 3191), fingerLocation)) {
+			AddToInventory(EBlockType::GlassBlock, 50);
+		}
+		break;
 	}
 }
 

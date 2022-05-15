@@ -61,7 +61,26 @@ public:
 	void updatePage();
 
 	// Checks for any action by the player.
-	void checkAction();
+	void runCheck();
+
+	// Checks if anything on the interface is being clicked.
+	/**
+	* Checks if anything on the interface is being clicked and acts on it
+	* if need be.
+	* 
+	* @param fingerLocation The location of the given finger.
+	* @param canClick The canClick field that corresponds to given finger.
+	* @param positionCm The position of the main block in centimeters.
+	*/
+	void clickCheck(CoordinateInCentimeters fingerLocation, bool &canClick, CoordinateInCentimeters positionCm);
+
+	/**
+	* Acts on a click, i.e., checks what is being clicked and does what
+	* is supposed to happen in accordance with chosen functionality.
+	* 
+	* @param fingerLocation The location of the given finger.
+	*/
+	void clickRegister(CoordinateInCentimeters fingerLocation);
 
 	/**
 	* Calculates the top left corner of the current interface.
@@ -81,7 +100,5 @@ public:
 	* @return Whether the given finger is between the two given corners.
 	*/
 	bool isBetween(std::pair<int, int> topLeft, std::pair<int, int> bottomRight, CoordinateInCentimeters fingerPos);
-
-
 
 };

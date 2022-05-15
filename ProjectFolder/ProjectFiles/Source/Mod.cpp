@@ -64,7 +64,7 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 void Event_Tick()
 {
 	for (auto it = cMenuBlocks.begin(); it != cMenuBlocks.end(); it++) {
-		it->checkAction();
+		it->runCheck();
 	}
 }
 
