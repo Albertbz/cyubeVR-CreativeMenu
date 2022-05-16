@@ -9,10 +9,10 @@ public:
 	CoordinateInBlocks position;
 	// The direction the player was when placing the block. 1=-x, 2=+x, 3=-y, 4=+y.
 	int direction;
-	// The current page that the player is on. 0=main, 1=blocks, 2=items, 3=tools.
+	// The current page that the player is on. 0=main, 1=items, 2=blocks, 3=objects, 4=foliage, 5=tools.
 	int currentPage;
-	// An array with all of the menu blocks. 0-5 from top left to bottom right.
-	std::array<tempBlock, 6> menuBlocks;
+	// An array with all of the interface blocks. 0-5 from top left to bottom right.
+	std::array<tempBlock, 6> interfaceBlocks;
 	// A bool to keep track of whether the player can click the interface with the left hand.
 	bool canClickLeft;
 	// A bool to keep track of whether the player can click the interface with the right hand.

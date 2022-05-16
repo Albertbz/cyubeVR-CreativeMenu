@@ -3,16 +3,16 @@
 CMenu::CMenu(CoordinateInBlocks position)
 {
 	this->position = position;
-	this->menuBlocks = {};
+	this->interfaceBlocks = {};
 	this->canClickLeft = true;
 	this->canClickRight = true;
 
-	this->menuBlocks[0].info = mMenu1BlockID;
-	this->menuBlocks[1].info = mMenu2BlockID;
-	this->menuBlocks[2].info = mMenu3BlockID;
-	this->menuBlocks[3].info = mMenu4BlockID;
-	this->menuBlocks[4].info = mMenu5BlockID;
-	this->menuBlocks[5].info = mMenu6BlockID;
+	this->interfaceBlocks[0].info = mMenu1BlockID;
+	this->interfaceBlocks[1].info = mMenu2BlockID;
+	this->interfaceBlocks[2].info = mMenu3BlockID;
+	this->interfaceBlocks[3].info = mMenu4BlockID;
+	this->interfaceBlocks[4].info = mMenu5BlockID;
+	this->interfaceBlocks[5].info = mMenu6BlockID;
 	
 	CoordinateInCentimeters playerLocation = GetPlayerLocation();
 	CoordinateInCentimeters blockPositionCm = CoordinateInCentimeters(position);
@@ -22,42 +22,42 @@ CMenu::CMenu(CoordinateInBlocks position)
 	if (playerLocation.X < blockPositionCm.X - 25 && playerLocation.Y < blockPositionCm.Y + xDifference && playerLocation.Y > blockPositionCm.Y - xDifference) {
 		this->direction = 1;
 
-		this->menuBlocks[0].position = CoordinateInBlocks(0, -1, 3);
-		this->menuBlocks[1].position = CoordinateInBlocks(0, 0, 3);
-		this->menuBlocks[2].position = CoordinateInBlocks(0, 1, 3);
-		this->menuBlocks[3].position = CoordinateInBlocks(0, -1, 2);
-		this->menuBlocks[4].position = CoordinateInBlocks(0, 0, 2);
-		this->menuBlocks[5].position = CoordinateInBlocks(0, 1, 2);
+		this->interfaceBlocks[0].position = CoordinateInBlocks(0, -1, 3);
+		this->interfaceBlocks[1].position = CoordinateInBlocks(0, 0, 3);
+		this->interfaceBlocks[2].position = CoordinateInBlocks(0, 1, 3);
+		this->interfaceBlocks[3].position = CoordinateInBlocks(0, -1, 2);
+		this->interfaceBlocks[4].position = CoordinateInBlocks(0, 0, 2);
+		this->interfaceBlocks[5].position = CoordinateInBlocks(0, 1, 2);
 	}
 	else if (playerLocation.X > blockPositionCm.X + 25 && playerLocation.Y < blockPositionCm.Y + xDifference && playerLocation.Y > blockPositionCm.Y - xDifference) {
 		this->direction = 2;
 
-		this->menuBlocks[0].position = CoordinateInBlocks(0, 1, 3);
-		this->menuBlocks[1].position = CoordinateInBlocks(0, 0, 3);
-		this->menuBlocks[2].position = CoordinateInBlocks(0, -1, 3);
-		this->menuBlocks[3].position = CoordinateInBlocks(0, 1, 2);
-		this->menuBlocks[4].position = CoordinateInBlocks(0, 0, 2);
-		this->menuBlocks[5].position = CoordinateInBlocks(0, -1, 2);
+		this->interfaceBlocks[0].position = CoordinateInBlocks(0, 1, 3);
+		this->interfaceBlocks[1].position = CoordinateInBlocks(0, 0, 3);
+		this->interfaceBlocks[2].position = CoordinateInBlocks(0, -1, 3);
+		this->interfaceBlocks[3].position = CoordinateInBlocks(0, 1, 2);
+		this->interfaceBlocks[4].position = CoordinateInBlocks(0, 0, 2);
+		this->interfaceBlocks[5].position = CoordinateInBlocks(0, -1, 2);
 	}
 	else if (playerLocation.Y < blockPositionCm.Y - 25 && playerLocation.X < blockPositionCm.X + yDifference && playerLocation.X > blockPositionCm.X - yDifference) {
 		this->direction = 3;
 
-		this->menuBlocks[0].position = CoordinateInBlocks(1, 0, 3);
-		this->menuBlocks[1].position = CoordinateInBlocks(0, 0, 3);
-		this->menuBlocks[2].position = CoordinateInBlocks(-1, 0, 3);
-		this->menuBlocks[3].position = CoordinateInBlocks(1, 0, 2);
-		this->menuBlocks[4].position = CoordinateInBlocks(0, 0, 2);
-		this->menuBlocks[5].position = CoordinateInBlocks(-1, 0, 2);
+		this->interfaceBlocks[0].position = CoordinateInBlocks(1, 0, 3);
+		this->interfaceBlocks[1].position = CoordinateInBlocks(0, 0, 3);
+		this->interfaceBlocks[2].position = CoordinateInBlocks(-1, 0, 3);
+		this->interfaceBlocks[3].position = CoordinateInBlocks(1, 0, 2);
+		this->interfaceBlocks[4].position = CoordinateInBlocks(0, 0, 2);
+		this->interfaceBlocks[5].position = CoordinateInBlocks(-1, 0, 2);
 	}
 	else if (playerLocation.Y > blockPositionCm.Y + 25 && playerLocation.X < blockPositionCm.X + yDifference && playerLocation.X > blockPositionCm.X - yDifference) {
 		this->direction = 4;
 
-		this->menuBlocks[0].position = CoordinateInBlocks(-1, 0, 3);
-		this->menuBlocks[1].position = CoordinateInBlocks(0, 0, 3);
-		this->menuBlocks[2].position = CoordinateInBlocks(1, 0, 3);
-		this->menuBlocks[3].position = CoordinateInBlocks(-1, 0, 2);
-		this->menuBlocks[4].position = CoordinateInBlocks(0, 0, 2);
-		this->menuBlocks[5].position = CoordinateInBlocks(1, 0, 2);
+		this->interfaceBlocks[0].position = CoordinateInBlocks(-1, 0, 3);
+		this->interfaceBlocks[1].position = CoordinateInBlocks(0, 0, 3);
+		this->interfaceBlocks[2].position = CoordinateInBlocks(1, 0, 3);
+		this->interfaceBlocks[3].position = CoordinateInBlocks(-1, 0, 2);
+		this->interfaceBlocks[4].position = CoordinateInBlocks(0, 0, 2);
+		this->interfaceBlocks[5].position = CoordinateInBlocks(1, 0, 2);
 	}
 	
 	this->currentPage = 0;
@@ -72,7 +72,7 @@ void CMenu::remove()
 
 void CMenu::setPage()
 {
-	for (tempBlock &b : menuBlocks)
+	for (tempBlock &b : interfaceBlocks)
 	{
 		b.set(position);
 	}
@@ -80,7 +80,7 @@ void CMenu::setPage()
 
 void CMenu::removePage()
 {
-	for (tempBlock &b : menuBlocks)
+	for (tempBlock &b : interfaceBlocks)
 	{
 		b.remove(position);
 	}
@@ -96,20 +96,20 @@ void CMenu::updatePage()
 {
 	switch (currentPage) {
 	case 0:
-		menuBlocks[0].info = mMenu1BlockID;
-		menuBlocks[1].info = mMenu2BlockID;
-		menuBlocks[2].info = mMenu3BlockID;
-		menuBlocks[3].info = mMenu4BlockID;
-		menuBlocks[4].info = mMenu5BlockID;
-		menuBlocks[5].info = mMenu6BlockID;
+		interfaceBlocks[0].info = mMenu1BlockID;
+		interfaceBlocks[1].info = mMenu2BlockID;
+		interfaceBlocks[2].info = mMenu3BlockID;
+		interfaceBlocks[3].info = mMenu4BlockID;
+		interfaceBlocks[4].info = mMenu5BlockID;
+		interfaceBlocks[5].info = mMenu6BlockID;
 		break;
-	case 1:
-		menuBlocks[0].info = bMenu1BlockID;
-		menuBlocks[1].info = bMenu2BlockID;
-		menuBlocks[2].info = bMenu3BlockID;
-		menuBlocks[3].info = bMenu4BlockID;
-		menuBlocks[4].info = bMenu5BlockID;
-		menuBlocks[5].info = bMenu6BlockID;
+	case 2:
+		interfaceBlocks[0].info = bMenu1BlockID;
+		interfaceBlocks[1].info = bMenu2BlockID;
+		interfaceBlocks[2].info = bMenu3BlockID;
+		interfaceBlocks[3].info = bMenu4BlockID;
+		interfaceBlocks[4].info = bMenu5BlockID;
+		interfaceBlocks[5].info = bMenu6BlockID;
 		break;
 	}
 	
@@ -193,12 +193,46 @@ void CMenu::clickRegister(CoordinateInCentimeters fingerLocation)
 		if (isBetween(std::pair(512, 1280), std::pair(2047, 2815), fingerLocation)) {
 			changePage(1);
 		}
-		else if (isBetween(std::pair(2304, 1280), std::pair(3839, 2815), fingerLocation)) {
-			//currentPage = 2;
-			//updatePage();
+		else if (isBetween(std::pair(2304, 1081), std::pair(3840, 1984), fingerLocation)) {
+			changePage(2);
 		}
 		break;
-	case 1: // Block menu
+	case 1: // Items menu
+		if (isBetween(std::pair(97, 72), std::pair(635, 610), fingerLocation)) {
+			changePage(0);
+		}
+		else if (isBetween(std::pair(896, 1144), std::pair(1407, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::Nugget_Coal, 50);
+		}
+		else if (isBetween(std::pair(1664, 1144), std::pair(2175, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::Nugget_Copper, 50);
+		}
+		else if (isBetween(std::pair(2432, 1144), std::pair(2943, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::IngotIron, 50);
+		}
+		else if (isBetween(std::pair(3200, 1144), std::pair(3711, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::Nugget_Gold, 50);
+		}
+		else if (isBetween(std::pair(3968, 1144), std::pair(4479, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::DyeGreen, 50);
+		}
+		else if (isBetween(std::pair(4736, 1144), std::pair(5247, 1655), fingerLocation)) {
+			AddToInventory(EBlockType::DyeBlue, 50);
+		}
+		else if (isBetween(std::pair(896, 1912), std::pair(1407, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::DyeRed, 50);
+		}
+		else if (isBetween(std::pair(1664, 1912), std::pair(2175, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::DyeWhite, 50);
+		}
+		else if (isBetween(std::pair(2432, 1912), std::pair(2943, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::DyeRainbow, 50);
+		}
+		else if (isBetween(std::pair(3200, 1912), std::pair(3711, 2423), fingerLocation)) {
+			AddToInventory(EBlockType::GlassIngot, 50);
+		}
+		break;
+	case 2: // Block menu
 		if (isBetween(std::pair(97, 72), std::pair(635, 610), fingerLocation)) {
 			changePage(0);
 		}
@@ -245,9 +279,12 @@ void CMenu::clickRegister(CoordinateInCentimeters fingerLocation)
 			AddToInventory(EBlockType::Wallstone, 50);
 		}
 		else if (isBetween(std::pair(2432, 2680), std::pair(2943, 3191), fingerLocation)) {
-			AddToInventory(EBlockType::WoodScaffolding, 50);
+			AddToInventory(EBlockType::Flagstone, 50);
 		}
 		else if (isBetween(std::pair(3200, 2680), std::pair(3711, 3191), fingerLocation)) {
+			AddToInventory(EBlockType::WoodScaffolding, 50);
+		}
+		else if (isBetween(std::pair(3968, 2680), std::pair(4479, 3191), fingerLocation)) {
 			AddToInventory(EBlockType::GlassBlock, 50);
 		}
 		break;
@@ -259,16 +296,16 @@ CoordinateInCentimeters CMenu::getCorner()
 	CoordinateInCentimeters corner;
 	switch (direction) {
 	case 1:
-		corner = position + menuBlocks[0].position + CoordinateInCentimeters(0, -25, 25);
+		corner = position + interfaceBlocks[0].position + CoordinateInCentimeters(0, -25, 25);
 		break;
 	case 2:
-		corner = position + menuBlocks[0].position + CoordinateInCentimeters(0, 25, 25);
+		corner = position + interfaceBlocks[0].position + CoordinateInCentimeters(0, 25, 25);
 		break;
 	case 3:
-		corner = position + menuBlocks[0].position + CoordinateInCentimeters(25, 0, 25);
+		corner = position + interfaceBlocks[0].position + CoordinateInCentimeters(25, 0, 25);
 		break;
 	case 4:
-		corner = position + menuBlocks[0].position + CoordinateInCentimeters(-25, 0, 25);
+		corner = position + interfaceBlocks[0].position + CoordinateInCentimeters(-25, 0, 25);
 		break;
 	}
 	return corner;
