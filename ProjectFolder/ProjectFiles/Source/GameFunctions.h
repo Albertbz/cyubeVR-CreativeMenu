@@ -122,6 +122,26 @@ namespace ModAPI {
 		None
 	};
 
+	struct SharedMemoryHandleC {
+		void** Pointer;
+		wchar_t* Key;
+		bool Valid;
+	};
+
+	struct ScopedSharedMemoryHandle {
+		void*& Pointer;
+		wchar_t* Key;
+		bool Valid;
+
+		ScopedSharedMemoryHandle(const SharedMemoryHandleC& i) : Pointer(*i.Pointer), Key(i.Key), Valid(i.Valid) {}
+
+		~ScopedSharedMemoryHandle(); // Declared here, defined in GameAPI.cpp
+
+		ScopedSharedMemoryHandle(ScopedSharedMemoryHandle&&) = delete;
+		ScopedSharedMemoryHandle(const ScopedSharedMemoryHandle& i) = delete;
+		ScopedSharedMemoryHandle& operator=(const ScopedSharedMemoryHandle& i) = delete;
+	};
+
 	struct CoordinateInCentimetersC {
 		int64_t X;
 		int64_t Y;
@@ -341,6 +361,22 @@ namespace ModAPI {
 	typedef void (*SetTimeOfDay_T)(float NewTime);
 
 
+	typedef void (*PlayHapticFeedbackOnHand_T)(bool LeftHand, float DurationSeconds, float Frequency, float Amplitude);
+
+	typedef void (*SpawnBPModActor_T)(ModAPI::CoordinateInCentimeters At, const wchar_t* ModName, const wchar_t* ActorName);
+
+
+	typedef void (*SaveModDataString_T)(const wchar_t* ModName, const wchar_t* StringIn);
+	typedef bool (*LoadModDataString_T)(const wchar_t* ModName, wchar_t*& StringOut);
+
+	typedef void (*SaveModData_T)(const wchar_t* ModName, uint8_t* Data, uint64_t ArraySize);
+	typedef uint8_t* (*LoadModData_T)(const wchar_t* ModName, uint64_t* ArraySizeOut);
+
+
+	typedef SharedMemoryHandleC (*GetSharedMemoryPointer_T)(const wchar_t* Key, bool CreateIfNotExist, bool WaitUntilExist);
+	typedef void (*ReleaseSharedMemoryPointer_T)(ModAPI::SharedMemoryHandleC& Handle);
+
+
 	namespace InternalFunctions {
 
 		inline Log_T I_Log;
@@ -377,6 +413,18 @@ namespace ModAPI {
 
 		inline SetTimeOfDay_T I_SetTimeOfDay;
 
+		inline PlayHapticFeedbackOnHand_T I_PlayHapticFeedbackOnHand;
+
+		inline SpawnBPModActor_T I_SpawnBPModActor;
+
+		inline SaveModDataString_T I_SaveModDataString;
+		inline LoadModDataString_T I_LoadModDataString;
+
+		inline SaveModData_T I_SaveModData;
+		inline LoadModData_T I_LoadModData;
+
+		inline GetSharedMemoryPointer_T I_GetSharedMemoryPointer;
+		inline ReleaseSharedMemoryPointer_T I_ReleaseSharedMemoryPointer;
 	}
 
 

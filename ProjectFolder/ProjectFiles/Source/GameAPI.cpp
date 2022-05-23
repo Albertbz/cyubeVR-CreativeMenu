@@ -108,6 +108,55 @@ bool IsCurrentlyNight()
 	return (Time < 600 || Time > 1800);
 }
 
+void PlayHapticFeedbackOnHand(bool LeftHand, float DurationSeconds, float Frequency, float Amplitude)
+{
+	return InternalFunctions::I_PlayHapticFeedbackOnHand(LeftHand, DurationSeconds, Frequency, Amplitude);
+}
+
+void SpawnBPModActor(CoordinateInCentimeters At, const wString& ModName, const wString& ActorName)
+{
+	return InternalFunctions::I_SpawnBPModActor(At, ModName.c_str(), ActorName.c_str());
+}
+
+void SaveModDataString(wString ModName, wString StringIn)
+{
+	return InternalFunctions::I_SaveModDataString(ModName.c_str(), StringIn.c_str());
+}
+
+bool LoadModDataString(wString ModName, wString& StringOut)
+{
+	wchar_t* StringOutT;
+
+	bool success = InternalFunctions::I_LoadModDataString(ModName.c_str(), StringOutT);
+
+	if (!success) return false;
+
+	StringOut = std::wstring(StringOutT);
+
+	HeapFree(GetProcessHeap(), 0, StringOutT);
+
+	return true;
+}
+
+void SaveModData(wString ModName, const std::vector<uint8_t>& Data)
+{
+	return InternalFunctions::I_SaveModData(ModName.c_str(), (uint8_t*) Data.data(), Data.size());
+}
+
+std::vector<uint8_t> LoadModData(wString ModName)
+{
+	uint64_t ArraySize;
+	uint8_t* Data = InternalFunctions::I_LoadModData(ModName.c_str(), &ArraySize);
+
+	std::vector<uint8_t> DataOut(ArraySize);
+	
+	memcpy(&DataOut[0], Data, ArraySize);
+
+	HeapFree(GetProcessHeap(), 0, Data);
+
+	return DataOut;
+}
+
 
 /*******************************************************
 	Useful functions
@@ -191,6 +240,22 @@ const wString& GetThisModFolderPath()
 	return Path;
 }
 
+ScopedSharedMemoryHandle GetSharedMemoryPointer(wString Key, bool CreateIfNotExist, bool WaitUntilExist)
+{
+	return ScopedSharedMemoryHandle(InternalFunctions::I_GetSharedMemoryPointer(Key.c_str(), CreateIfNotExist, WaitUntilExist));
+}
+
+ScopedSharedMemoryHandle::~ScopedSharedMemoryHandle() 
+{
+	if (Valid) {
+		SharedMemoryHandleC HandleC;
+		HandleC.Pointer = &Pointer;
+		HandleC.Key = Key;
+		HandleC.Valid = Valid;
+
+		InternalFunctions::I_ReleaseSharedMemoryPointer(HandleC);
+	}
+}
 
 
 
