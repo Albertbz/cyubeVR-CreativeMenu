@@ -1,13 +1,21 @@
 #include "GameAPI.h"
 #include "CMenu.h"
+#include <fstream>
+#include <iostream>
 
 /************************************************************
 	Custom Variables for the mod
 *************************************************************/
 
+
 const int CMenuBlockID = 298343567;
 
+// Tick tracker to take care of saving blocks.
+int tickNum = 0;
+// Stores all CMenu blocks.
 std::vector<CMenu> cMenuBlocks;
+// The path to the saves folder.
+std::wstring path;
 
 /************************************************************
 	Config Variables (Set these to whatever you need. They are automatically read by the game.)
@@ -15,7 +23,7 @@ std::vector<CMenu> cMenuBlocks;
 
 UniqueID ThisModUniqueIDs[] = { CMenuBlockID }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
-float TickRate = 5;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
+float TickRate = 10;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
 /************************************************************* 
 //	Functions (Run automatically by the game, you can put any code you want into them)
@@ -66,6 +74,18 @@ void Event_Tick()
 	for (auto it = cMenuBlocks.begin(); it != cMenuBlocks.end(); it++) {
 		it->runCheck();
 	}
+
+	switch (tickNum) {
+	case 100:
+		// Saves all CMenu blocks to a file for later loading.
+		writeBlocks<CMenu>(std::ofstream{ path + L"\\" + L"CMenuBlocks.txt" }, cMenuBlocks);
+
+		tickNum = 0;
+		break;
+	default:
+		tickNum++;
+		break;
+	}
 }
 
 
@@ -73,13 +93,21 @@ void Event_Tick()
 // Run once when the world is loaded
 void Event_OnLoad()
 {
+	path = GetThisModSaveFolderPath(L"CreativeMenu");
+	CreateDirectoryW(path.c_str(), NULL);
+	
+	Log(L"Path: " + path);
 
+	// Loads all previously placed CMenu blocks.
+	cMenuBlocks = readBlocks<CMenu>(std::ifstream{ path + L"\\" + L"CMenuBlocks.txt"});
 }
 
 // Run once when the world is exited
 void Event_OnExit()
 {
 	
+	// Saves all placed CMenu blocks.
+	writeBlocks<CMenu>(std::ofstream{ path + L"\\" + L"CMenuBlocks.txt" }, cMenuBlocks);
 }
 
 /*******************************************************
