@@ -2,13 +2,14 @@
 #include "CMenu.h"
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 /************************************************************
 	Custom Variables for the mod
 *************************************************************/
 
 
-const int CMenuBlockID = 298343567;
+
 
 // Tick tracker to take care of saving blocks.
 int tickNum = 0;
@@ -17,11 +18,21 @@ std::vector<CMenu> cMenuBlocks;
 // The path to the saves folder.
 std::wstring path;
 
+// Custom blocks
+
+const int CMenuBlockID = 298343567;
+const int PlaceableCoalBlockID = 1169799691;
+const int PlaceableCopperBlockID = 1169799692;
+const int PlaceableCrystalBlockID = 1169799693;
+const int PlaceableGoldBlockID = 1169799694;
+const int PlaceableIronBlockID = 1169799695;
+
 /************************************************************
 	Config Variables (Set these to whatever you need. They are automatically read by the game.)
 *************************************************************/
 
-UniqueID ThisModUniqueIDs[] = { CMenuBlockID }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+UniqueID ThisModUniqueIDs[] = { CMenuBlockID, PlaceableCoalBlockID, PlaceableCopperBlockID, PlaceableCrystalBlockID,
+								PlaceableGoldBlockID, PlaceableIronBlockID }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 10;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -34,16 +45,34 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 {
 	switch (CustomBlockID) {
 	case CMenuBlockID:
-		bool newBlock = true;
-		for (auto it = cMenuBlocks.begin(); it != cMenuBlocks.end(); it++) {
-			if (it->position == At) {
-				newBlock = false;
-				break;
+		{
+			bool newBlock = true;
+			for (auto it = cMenuBlocks.begin(); it != cMenuBlocks.end(); it++) {
+				if (it->position == At) {
+					newBlock = false;
+					break;
+				}
+			}
+			if (newBlock) {
+				cMenuBlocks.push_back(CMenu(At));
 			}
 		}
-		if (newBlock) {
-			cMenuBlocks.push_back(CMenu(At));
-		}
+		break;
+	case PlaceableCoalBlockID:
+		SetBlock(At, EBlockType::Ore_Coal);
+		break;
+	case PlaceableCopperBlockID:
+		SetBlock(At, EBlockType::Ore_Copper);
+		break;
+	case PlaceableCrystalBlockID:
+		SetBlock(At, EBlockType::CrystalBlock);
+		break;
+	case PlaceableGoldBlockID:
+		SetBlock(At, EBlockType::Ore_Gold);
+		break;
+	case PlaceableIronBlockID:
+		SetBlock(At, EBlockType::Ore_Iron);
+		break;
 	}
 }
 
@@ -51,13 +80,18 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 // Run every time a block is destroyed
 void Event_BlockDestroyed(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved)
 {
-	for (auto it = cMenuBlocks.begin(); it != cMenuBlocks.end(); it++) {
-		if (it->position == At) {
-			it->remove();
-			cMenuBlocks.erase(it);
-			break;
+	switch (CustomBlockID) {
+	case CMenuBlockID:
+		for (auto it = cMenuBlocks.begin(); it != cMenuBlocks.end(); it++) {
+			if (it->position == At) {
+				it->remove();
+				cMenuBlocks.erase(it);
+				break;
+			}
 		}
+		break;
 	}
+
 }
 
 
@@ -94,9 +128,7 @@ void Event_Tick()
 void Event_OnLoad()
 {
 	path = GetThisModSaveFolderPath(L"CreativeMenu");
-	CreateDirectoryW(path.c_str(), NULL);
-	
-	Log(L"Path: " + path);
+	std::filesystem::create_directories(path);
 
 	// Loads all previously placed CMenu blocks.
 	cMenuBlocks = readBlocks<CMenu>(std::ifstream{ path + L"\\" + L"CMenuBlocks.txt"});

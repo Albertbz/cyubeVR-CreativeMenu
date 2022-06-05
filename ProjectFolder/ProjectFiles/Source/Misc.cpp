@@ -2,8 +2,7 @@
 
 void tempBlock::set(CoordinateInBlocks relativeTo)
 {
-	prevInfo = GetBlock(relativeTo + position);
-	SetBlock(relativeTo + position, info);
+	prevInfo = GetAndSetBlock(relativeTo + position, info);
 }
 
 void tempBlock::remove(CoordinateInBlocks relativeTo)

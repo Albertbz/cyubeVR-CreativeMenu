@@ -21,6 +21,11 @@ public:
 	int currentPage;
 
 	enum {
+		pCoalBlockID = 1169799691,
+		pCopperBlockID = 1169799692,
+		pCrystalBlockID = 1169799693,
+		pGoldBlockID = 1169799694,
+		pIronBlockID = 1169799695,
 		mMenu1BlockID = 149771111,
 		mMenu2BlockID = 149771112,
 		mMenu3BlockID = 149771113,
