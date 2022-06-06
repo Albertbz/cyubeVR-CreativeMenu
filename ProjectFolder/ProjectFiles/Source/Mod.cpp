@@ -112,7 +112,7 @@ void Event_Tick()
 	switch (tickNum) {
 	case 100:
 		// Saves all CMenu blocks to a file for later loading.
-		writeBlocks<CMenu>(std::ofstream{ path + L"\\" + L"CMenuBlocks.txt" }, cMenuBlocks);
+		writeBlocks<CMenu>(std::ofstream{ path + L"CMenuBlocks.txt" }, cMenuBlocks);
 
 		tickNum = 0;
 		break;
@@ -125,13 +125,12 @@ void Event_Tick()
 
 
 // Run once when the world is loaded
-void Event_OnLoad()
+void Event_OnLoad(bool CreatedNewWorld)
 {
 	path = GetThisModSaveFolderPath(L"CreativeMenu");
-	std::filesystem::create_directories(path);
 
 	// Loads all previously placed CMenu blocks.
-	cMenuBlocks = readBlocks<CMenu>(std::ifstream{ path + L"\\" + L"CMenuBlocks.txt"});
+	cMenuBlocks = readBlocks<CMenu>(std::ifstream{ path + L"CMenuBlocks.txt"});
 }
 
 // Run once when the world is exited
@@ -139,7 +138,7 @@ void Event_OnExit()
 {
 	
 	// Saves all placed CMenu blocks.
-	writeBlocks<CMenu>(std::ofstream{ path + L"\\" + L"CMenuBlocks.txt" }, cMenuBlocks);
+	writeBlocks<CMenu>(std::ofstream{ path + L"CMenuBlocks.txt" }, cMenuBlocks);
 }
 
 /*******************************************************

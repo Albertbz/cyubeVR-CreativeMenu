@@ -266,6 +266,10 @@ void CMenu::clickRegister(CoordinateInCentimeters fingerLocation, bool leftHand)
 			changeMenu(5);
 			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
 		}
+		else if (isBetween(std::pair(2839, 3574), std::pair(3303, 4038), fingerLocation)) {
+			clearInventory();
+			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+		}
 		break;
 	case 1: // Items menu
 		if (isBetween(std::pair(70, 70), std::pair(608, 608), fingerLocation)) {
@@ -522,6 +526,10 @@ void CMenu::clickRegister(CoordinateInCentimeters fingerLocation, bool leftHand)
 					AddToInventory(EBlockType::RespawnTorch, 1);
 					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
 				}
+				else if (isBetween(std::pair(1664, 1912), std::pair(2175, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::WoodPost, 1);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
 				break;
 			}
 		}
@@ -615,7 +623,7 @@ void CMenu::clickRegister(CoordinateInCentimeters fingerLocation, bool leftHand)
 
 CoordinateInCentimeters CMenu::getCorner()
 {
-	CoordinateInCentimeters corner;
+	CoordinateInCentimeters corner{};
 	switch (direction) {
 	case 1:
 		corner = position + interfaceBlocks[0].position + CoordinateInCentimeters(0, -25, 25);
@@ -636,10 +644,10 @@ CoordinateInCentimeters CMenu::getCorner()
 bool CMenu::isBetween(std::pair<int, int> topLeft, std::pair<int, int> bottomRight, CoordinateInCentimeters fingerPos)
 {
 	CoordinateInCentimeters corner = getCorner();
-	int topLeftFirst = topLeft.first / 6144.0 * 150.0;
-	int topLeftSecond = topLeft.second / 4096.0 * 100.0;
-	int bottomRightFirst = bottomRight.first / 6144.0 * 150.0;
-	int bottomRightSecond = bottomRight.second / 4096.0 * 100.0;
+	int topLeftFirst = topLeft.first * 25 / 1024;
+	int topLeftSecond = topLeft.second * 25 / 1024;
+	int bottomRightFirst = bottomRight.first * 25 / 1024;
+	int bottomRightSecond = bottomRight.second * 25 / 1024;
 	
 	bool result = false;
 
@@ -658,4 +666,27 @@ bool CMenu::isBetween(std::pair<int, int> topLeft, std::pair<int, int> bottomRig
 		break;
 	}
 	return result;
+}
+
+void CMenu::clearInventory()
+{
+	std::vector<BlockInfo> knownPossibleItems = 
+	{
+		EBlockType::Chair1, EBlockType::Chair1Birch, EBlockType::Chest1, EBlockType::Compass, EBlockType::Crystal, EBlockType::CrystalBlock,
+		EBlockType::Dirt, EBlockType::DryGrass, EBlockType::DyeBlue, EBlockType::DyeGreen, EBlockType::DyeRainbow, EBlockType::DyeRed,
+		EBlockType::DyeWhite, EBlockType::Flagstone, EBlockType::FrameCopper, EBlockType::FrameGold, EBlockType::FrameWood, EBlockType::Furnace,
+		EBlockType::FurnaceMoldIron, EBlockType::GlassBlock, EBlockType::GlassIngot, EBlockType::Grass, EBlockType::IngotIron, EBlockType::MetalPod,
+		EBlockType::Nugget_Coal, EBlockType::Nugget_Copper, EBlockType::Nugget_Gold, EBlockType::Ore_Coal, EBlockType::Ore_Copper, EBlockType::Ore_Gold,
+		EBlockType::Ore_Iron, EBlockType::RespawnTorch, EBlockType::Sand, EBlockType::SandbagPile, EBlockType::StoneMined, EBlockType::Torch,
+		EBlockType::TorchBlue, EBlockType::TorchGreen, EBlockType::TorchRainbow, EBlockType::TorchRed, EBlockType::TreeWood, EBlockType::TreeWoodBright,
+		EBlockType::T_Axe_Copper, EBlockType::T_Axe_Iron, EBlockType::T_Axe_Stone, EBlockType::T_PickAxe_Copper, EBlockType::T_PickAxe_Iron,
+		EBlockType::T_PickAxe_Stone, EBlockType::T_Shovel_Copper, EBlockType::T_Shovel_Iron, EBlockType::T_Shovel_Stone, EBlockType::T_Sledgehammer_Copper,
+		EBlockType::T_Sledgehammer_Iron, EBlockType::WallmountCopper, EBlockType::Wallstone, EBlockType::WoodBarrel, EBlockType::WoodBench1,
+		EBlockType::WoodBench2, EBlockType::WoodBench3, EBlockType::WoodCarafe, EBlockType::WoodPlank, EBlockType::WoodPlankBright, EBlockType::WoodPost,
+		EBlockType::WoodScaffolding, EBlockType::WoodStool, EBlockType::WoodTable1, EBlockType::WoodTable2, pCoalBlockID, pCopperBlockID, pCrystalBlockID,
+		pGoldBlockID, pIronBlockID, 3000, 3001, 3002, 3003, 3004, 3005
+	};
+	for (BlockInfo i : knownPossibleItems) {
+		RemoveFromInventory(i, 2800);
+	}
 }

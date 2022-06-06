@@ -151,4 +151,6 @@ public:
 	*/
 	bool isBetween(std::pair<int, int> topLeft, std::pair<int, int> bottomRight, CoordinateInCentimeters fingerPos);
 
+	// Clears the player's inventory (removes everything but CMenu blocks).
+	void clearInventory();
 };
