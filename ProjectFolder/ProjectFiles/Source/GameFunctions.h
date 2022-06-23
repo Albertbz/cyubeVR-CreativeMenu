@@ -109,6 +109,7 @@ namespace ModAPI {
 		LootableInventory,
 		RespawnTorch,
 		T_Bow,
+		Statue,
 		MAX_BLOCKTYPE
 	};
 

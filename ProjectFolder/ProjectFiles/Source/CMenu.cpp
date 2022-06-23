@@ -530,6 +530,10 @@ void CMenu::clickRegister(CoordinateInCentimeters fingerLocation, bool leftHand)
 					AddToInventory(EBlockType::WoodPost, 1);
 					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
 				}
+				else if (isBetween(std::pair(2432, 1912), std::pair(2943, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::Statue, 1);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
 				break;
 			}
 		}
