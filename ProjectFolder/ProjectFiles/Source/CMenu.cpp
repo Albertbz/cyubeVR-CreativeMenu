@@ -21,6 +21,8 @@ CMenu::CMenu(CoordinateInBlocks position)
 	int64_t xDifference = std::abs(playerLocation.X - blockPositionCm.X);
 	int64_t yDifference = std::abs(playerLocation.Y - blockPositionCm.Y);
 
+	bool cancel = false;
+
 	if (playerLocation.X < blockPositionCm.X - 25 && playerLocation.Y < blockPositionCm.Y + xDifference && playerLocation.Y > blockPositionCm.Y - xDifference) {
 		this->direction = 1;
 
@@ -61,8 +63,14 @@ CMenu::CMenu(CoordinateInBlocks position)
 		this->interfaceBlocks[4].position = CoordinateInBlocks(0, 0, 2);
 		this->interfaceBlocks[5].position = CoordinateInBlocks(1, 0, 2);
 	}
+	else {
+		cancel = true;
+		SpawnHintText(position + CoordinateInBlocks(0, 0, 1), L"Can't place the menu in your head.\nMove a bit and try again.", 7.5);
+	}
 
-	setMenu();
+	if (!cancel) {
+		setMenu();
+	}
 }
 
 CMenu::CMenu(CoordinateInBlocks position, int direction, int currentMenu, std::array<tempBlock, 6> interfaceBlocks, bool canClickLeft, bool canClickRight, int currentPage)
@@ -688,7 +696,7 @@ void CMenu::clearInventory()
 		EBlockType::T_Sledgehammer_Iron, EBlockType::WallmountCopper, EBlockType::Wallstone, EBlockType::WoodBarrel, EBlockType::WoodBench1,
 		EBlockType::WoodBench2, EBlockType::WoodBench3, EBlockType::WoodCarafe, EBlockType::WoodPlank, EBlockType::WoodPlankBright, EBlockType::WoodPost,
 		EBlockType::WoodScaffolding, EBlockType::WoodStool, EBlockType::WoodTable1, EBlockType::WoodTable2, pCoalBlockID, pCopperBlockID, pCrystalBlockID,
-		pGoldBlockID, pIronBlockID, 3000, 3001, 3002, 3003, 3004, 3005
+		pGoldBlockID, pIronBlockID, 3000, 3001, 3002, 3003, 3004, 3005, EBlockType::Statue
 	};
 	for (BlockInfo i : knownPossibleItems) {
 		RemoveFromInventory(i, 2800);
