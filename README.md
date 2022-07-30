@@ -1,1 +1,6 @@
-GitHub repo for the Creative Menu mod: a mod that adds the possibility of getting all and every block, item, etc. in cyubeVR, without any need to do survival stuff. Meant for people who want to build things with no restrictions.
+# Creative Menu
+A mod for [cyubeVR](https://store.steampowered.com/app/619500/cyubeVR/) that adds a Creative Menu to the game so that it's possible for the player to get any and all native blocks, items, etc.
+
+[Go to source folder](<https://github.com/Albertbz/cyubeVR-CreativeMenu/tree/master/ProjectFolder/ProjectFiles/Source>).
+
+[This mod on the Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=2819601766).
