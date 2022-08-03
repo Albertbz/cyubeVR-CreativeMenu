@@ -64,6 +64,7 @@ CMenu::CMenu(CoordinateInBlocks position)
 		this->interfaceBlocks[5].position = CoordinateInBlocks(1, 0, 2);
 	}
 	else {
+		this->direction = 0; // Just a placeholder.
 		cancel = true;
 		SpawnHintText(position + CoordinateInBlocks(0, 0, 1), L"Can't place the menu in your head.\nMove a bit and try again.", 7.5);
 	}
@@ -701,4 +702,14 @@ void CMenu::clearInventory()
 	for (BlockInfo i : knownPossibleItems) {
 		RemoveFromInventory(i, 2800);
 	}
+}
+
+bool CMenu::hasOriginBlock(CoordinateInBlocks blockCoords)
+{
+	for (tempBlock b : interfaceBlocks) {
+		if (b.position + position == blockCoords) {
+			return true;
+		}
+	}
+	return false;
 }

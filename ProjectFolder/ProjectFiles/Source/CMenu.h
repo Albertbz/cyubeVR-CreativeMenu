@@ -153,4 +153,13 @@ public:
 
 	// Clears the player's inventory (removes everything but CMenu blocks).
 	void clearInventory();
+
+	/*
+	* Checks whether the given interface block has an origin block.
+	* 
+	* @param blockCoords The coordinates of the block.
+	* 
+	* @return Whether the given interface block has an origin block.
+	*/
+	bool hasOriginBlock(CoordinateInBlocks blockCoords);
 };
