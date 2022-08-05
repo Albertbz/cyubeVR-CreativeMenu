@@ -3,6 +3,6 @@ A mod for [cyubeVR](https://store.steampowered.com/app/619500/cyubeVR/) that add
 
 [Go to source folder](<https://github.com/Albertbz/cyubeVR-CreativeMenu/tree/master/ProjectFolder/ProjectFiles/Source>).
 
-[Old versions of the mod](https://github.com/Albertbz/cyubeVR-CreativeMenu/tree/master/Old%20Versions). They might not all work due to changes to the game.
+[All releases of this mod](https://github.com/Albertbz/cyubeVR-CreativeMenu/releases).
 
 [This mod on the Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=2819601766).
