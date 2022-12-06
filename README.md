@@ -1,5 +1,5 @@
 # Creative Menu
-A mod for [cyubeVR](https://store.steampowered.com/app/619500/cyubeVR/) that adds a Creative Menu to the game so that it's possible for the player to get any and all native blocks, items, etc.
+A mod for [cyubeVR](https://store.steampowered.com/app/619500/cyubeVR/) that adds a Creative Menu to the game so that it's possible for the player to get any and all blocks, items, etc.
 
 [Go to source folder](<https://github.com/Albertbz/cyubeVR-CreativeMenu/tree/master/ProjectFolder/ProjectFiles/Source>).
 

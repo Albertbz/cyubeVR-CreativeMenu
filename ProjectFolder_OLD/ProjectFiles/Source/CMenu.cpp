@@ -133,12 +133,23 @@ void CMenu::updateMenu()
 		interfaceBlocks[5].info = iMenu6BlockID;
 		break;
 	case 2:
-		interfaceBlocks[0].info = bMenu1BlockID;
-		interfaceBlocks[1].info = bMenu2BlockID;
-		interfaceBlocks[2].info = bMenu3BlockID;
-		interfaceBlocks[3].info = bMenu4BlockID;
-		interfaceBlocks[4].info = bMenu5BlockID;
-		interfaceBlocks[5].info = bMenu6BlockID;
+		switch (currentPage) {
+		case 1:
+			interfaceBlocks[0].info = bMenu11BlockID;
+			interfaceBlocks[1].info = bMenu12BlockID;
+			interfaceBlocks[2].info = bMenu13BlockID;
+			interfaceBlocks[3].info = bMenu14BlockID;
+			interfaceBlocks[4].info = bMenu15BlockID;
+			interfaceBlocks[5].info = bMenu16BlockID;
+			break;
+		case 2:
+			interfaceBlocks[0].info = bMenu21BlockID;
+			interfaceBlocks[1].info = bMenu22BlockID;
+			interfaceBlocks[2].info = bMenu23BlockID;
+			interfaceBlocks[3].info = bMenu24BlockID;
+			interfaceBlocks[4].info = bMenu25BlockID;
+			interfaceBlocks[5].info = bMenu26BlockID;
+		}
 		break;
 	case 3:
 		switch (currentPage) {
@@ -346,73 +357,135 @@ void CMenu::clickRegister(CoordinateInCentimeters fingerLocation, bool leftHand)
 			}
 			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
 		}
-		else if (isBetween(std::pair(896, 1144), std::pair(1407, 1655), fingerLocation)) {
-			AddToInventory(EBlockType::StoneMined, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(1664, 1144), std::pair(2175, 1655), fingerLocation)) {
-			AddToInventory(EBlockType::Grass, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(2432, 1144), std::pair(2943, 1655), fingerLocation)) {
-			AddToInventory(EBlockType::Dirt, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(3200, 1144), std::pair(3711, 1655), fingerLocation)) {
-			AddToInventory(EBlockType::Sand, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(3968, 1144), std::pair(4479, 1655), fingerLocation)) {
-			AddToInventory(EBlockType::TreeWood, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(4736, 1144), std::pair(5247, 1655), fingerLocation)) {
-			AddToInventory(EBlockType::TreeWoodBright, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(896, 1912), std::pair(1407, 2423), fingerLocation)) {
-			AddToInventory(EBlockType::WoodPlank, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(1664, 1912), std::pair(2175, 2423), fingerLocation)) {
-			AddToInventory(EBlockType::WoodPlankBright, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(2432, 1912), std::pair(2943, 2423), fingerLocation)) {
-			AddToInventory(pCoalBlockID, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(3200, 1912), std::pair(3711, 2423), fingerLocation)) {
-			AddToInventory(pCopperBlockID, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(3968, 1912), std::pair(4479, 2423), fingerLocation)) {
-			AddToInventory(pIronBlockID, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(4736, 1912), std::pair(5247, 2423), fingerLocation)) {
-			AddToInventory(pGoldBlockID, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(896, 2680), std::pair(1407, 3191), fingerLocation)) {
-			AddToInventory(pCrystalBlockID, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(1664, 2680), std::pair(2175, 3191), fingerLocation)) {
-			AddToInventory(EBlockType::Wallstone, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(2432, 2680), std::pair(2943, 3191), fingerLocation)) {
-			AddToInventory(EBlockType::Flagstone, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(3200, 2680), std::pair(3711, 3191), fingerLocation)) {
-			AddToInventory(EBlockType::WoodScaffolding, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
-		}
-		else if (isBetween(std::pair(3968, 2680), std::pair(4479, 3191), fingerLocation)) {
-			AddToInventory(EBlockType::GlassBlock, 50);
-			PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+		else {
+			switch (currentPage) {
+			case 1: // Page 1
+				if (isBetween(std::pair(5663, 2718), std::pair(6098, 3153), fingerLocation)) {
+					currentPage++;
+					updateMenu();
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(896, 1144), std::pair(1407, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::StoneMined, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(1664, 1144), std::pair(2175, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::Grass, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(2432, 1144), std::pair(2943, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::Dirt, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3200, 1144), std::pair(3711, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::Sand, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3968, 1144), std::pair(4479, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::TreeWood, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(4736, 1144), std::pair(5247, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::TreeWoodBright, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(896, 1912), std::pair(1407, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::WoodPlank, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(1664, 1912), std::pair(2175, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::WoodPlankBright, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(2432, 1912), std::pair(2943, 2423), fingerLocation)) {
+					AddToInventory(pCoalBlockID, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3200, 1912), std::pair(3711, 2423), fingerLocation)) {
+					AddToInventory(pCopperBlockID, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3968, 1912), std::pair(4479, 2423), fingerLocation)) {
+					AddToInventory(pIronBlockID, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(4736, 1912), std::pair(5247, 2423), fingerLocation)) {
+					AddToInventory(pGoldBlockID, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(896, 2680), std::pair(1407, 3191), fingerLocation)) {
+					AddToInventory(pCrystalBlockID, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(1664, 2680), std::pair(2175, 3191), fingerLocation)) {
+					AddToInventory(EBlockType::Wallstone, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(2432, 2680), std::pair(2943, 3191), fingerLocation)) {
+					AddToInventory(EBlockType::Flagstone, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3200, 2680), std::pair(3711, 3191), fingerLocation)) {
+					AddToInventory(EBlockType::WoodScaffolding, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3968, 2680), std::pair(4479, 3191), fingerLocation)) {
+					AddToInventory(EBlockType::GlassBlock, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				break;
+			case 2: // Page 2
+				if (isBetween(std::pair(5664, 1182), std::pair(6099, 1617), fingerLocation)) {
+					currentPage--;
+					updateMenu();
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(896, 1144), std::pair(1407, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::ShimmerstoneBlue, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(1664, 1144), std::pair(2175, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::ShimmerstoneGold, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(2432, 1144), std::pair(2943, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::ShimmerstoneGreen, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3200, 1144), std::pair(3711, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::ShimmerstoneWhite, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3968, 1144), std::pair(4479, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::StarstoneBlue, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(4736, 1144), std::pair(5247, 1655), fingerLocation)) {
+					AddToInventory(EBlockType::StarstoneGold, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(896, 1912), std::pair(1407, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::StarstoneGreen, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(1664, 1912), std::pair(2175, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::ShimmertileBlue, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(2432, 1912), std::pair(2943, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::ShimmertileGold, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3200, 1912), std::pair(3711, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::ShimmertileGreen, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				else if (isBetween(std::pair(3968, 1912), std::pair(4479, 2423), fingerLocation)) {
+					AddToInventory(EBlockType::ShimmertileWhite, 50);
+					PlayHapticFeedbackOnHand(leftHand, 0.1, 1, 1);
+				}
+				break;
+			}
 		}
 		break;
 	case 3: // Objects menu
@@ -697,7 +770,9 @@ void CMenu::clearInventory()
 		EBlockType::T_Sledgehammer_Iron, EBlockType::WallmountCopper, EBlockType::Wallstone, EBlockType::WoodBarrel, EBlockType::WoodBench1,
 		EBlockType::WoodBench2, EBlockType::WoodBench3, EBlockType::WoodCarafe, EBlockType::WoodPlank, EBlockType::WoodPlankBright, EBlockType::WoodPost,
 		EBlockType::WoodScaffolding, EBlockType::WoodStool, EBlockType::WoodTable1, EBlockType::WoodTable2, pCoalBlockID, pCopperBlockID, pCrystalBlockID,
-		pGoldBlockID, pIronBlockID, 3000, 3001, 3002, 3003, 3004, 3005, EBlockType::Statue
+		pGoldBlockID, pIronBlockID, 3000, 3001, 3002, 3003, 3004, 3005, EBlockType::Statue, EBlockType::ShimmerstoneBlue, EBlockType::ShimmerstoneGold,
+		EBlockType::ShimmerstoneGreen, EBlockType::ShimmerstoneWhite, EBlockType::ShimmertileBlue, EBlockType::ShimmertileGold, EBlockType::ShimmertileGreen,
+		EBlockType::ShimmertileWhite, EBlockType::StarstoneBlue, EBlockType::StarstoneGold, EBlockType::StarstoneGreen
 	};
 	for (BlockInfo i : knownPossibleItems) {
 		RemoveFromInventory(i, 2800);
