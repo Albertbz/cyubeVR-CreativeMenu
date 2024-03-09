@@ -49,7 +49,7 @@ bool registerFillType = false;
 	Custom Functions for the mod
 *************************************************************/
 
-void setBox() {
+void setBox(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInfo fillType) {
 	std::vector<BlockInfoLocation> operation;
 
 	int xMin = min(location1.X, location2.X);
@@ -73,11 +73,11 @@ void setBox() {
 	operations.push(operation);
 }
 
-void setShape() {
+void setShape(Shape shape) {
 	switch (shape)
 	{
 	case box:
-		setBox();
+		setBox(location1, location2, fillType);
 		break;
 	case sphere:
 		break;
@@ -137,15 +137,12 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		SetBlock(At, EBlockType::Ore_Iron);
 		break;
 	case Location1:
-		Log(L"Storing location1: " + At.ToString());
 		location1 = At;
 		break;
 	case Location2:
-		Log(L"Storing location2: " + At.ToString());
 		location2 = At;
 		break;
 	case BoxShape:
-		Log(L"Setting shape to box");
 		shape = box;
 		break;
 	case SphereShape:
@@ -158,13 +155,11 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		shape = pyramid;
 		break;
 	case RegisterFillType:
-		Log(L"Getting ready to register fill type");
 		timesToIgnoreBlockPlacement = 2;
 		registerFillType = true;
 		break;
 	case Set:
-		Log(L"Setting shape");
-		setShape();
+		setShape(shape);
 		break;
 	case Undo:
 		undoOperation();
@@ -217,13 +212,10 @@ void Event_OnExit()
 // Run every time any block is placed by the player
 void Event_AnyBlockPlaced(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 {
-	Log(L"Block placed: " + std::to_wstring((int)(Type.Type)) + L" " + std::to_wstring(Type.CustomBlockID) + L" at: " + At.ToString());
 	if (timesToIgnoreBlockPlacement != 0) {
-		Log(L"Ignoring block placement: " + std::to_wstring((int)(Type.Type)) + L" " + std::to_wstring(Type.CustomBlockID) + L" at: " + At.ToString());
 		timesToIgnoreBlockPlacement--;
 	}
 	else if (registerFillType) {
-		Log(L"Registering fill type: " + std::to_wstring((int)(Type.Type)) + L" " + std::to_wstring(Type.CustomBlockID) + L" at: " + At.ToString());
 		registerFillType = false;
 		fillType = Type;
 	}
