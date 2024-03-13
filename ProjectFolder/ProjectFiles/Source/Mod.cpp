@@ -73,6 +73,60 @@ void setBox(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInf
 	operations.push(operation);
 }
 
+void setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType) {
+	radius += 0.5;
+	double radiusSq = radius * radius;
+	int ceilRadius = ceil(radius);
+
+	std::vector<BlockInfoLocation> operation;
+
+	for (int x = 0; x <= ceilRadius; x++) {
+		for (int y = 0; y <= ceilRadius; y++) {
+			for (int z = 0; z <= ceilRadius; z++) {
+				double dSq = x * x + y * y + z * z;
+
+				if (dSq > radiusSq) {
+					continue;
+				}
+
+				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+				BlockInfo type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+				
+				location = center + CoordinateInBlocks(-x, y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(x, -y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(x, y, -z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(-x, -y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(x, -y, -z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(-x, y, -z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(-x, -y, -z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+			}
+		}
+	}
+
+	operations.push(operation);
+}
+
 void setShape(Shape shape) {
 	switch (shape)
 	{
@@ -80,7 +134,15 @@ void setShape(Shape shape) {
 		setBox(location1, location2, fillType);
 		break;
 	case sphere:
+	{
+		int xDiff = location1.X - location2.X;
+		int yDiff = location1.Y - location2.Y;
+		int zDiff = location1.Z - location2.Z;
+
+		double radius = sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
+		setSphere(location1, radius, fillType);
 		break;
+	}
 	case cylinder:
 		break;
 	case pyramid:
