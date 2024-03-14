@@ -16,7 +16,7 @@ const int PlaceableIronBlockID = 1169799695;
 
 const int Location1 = 1066913798;
 const int Location2 = 1823382047;
-const int BoxShape = 1919599248;
+const int CubeShape = 1919599248;
 const int SphereShape = 272127303;
 const int CylinderShape = 1174910537;
 const int PyramidShape = 210618550;
@@ -24,7 +24,7 @@ const int RegisterFillType = 1004850721;
 const int Set = 666103118;
 const int Undo = 205046945;
 
-enum Shape { box, sphere, cylinder, pyramid };
+enum Shape { cube, sphere, cylinder, pyramid };
 
 struct BlockInfoLocation {
 	BlockInfo type;
@@ -38,7 +38,7 @@ struct BlockInfoLocation {
 
 CoordinateInBlocks location1 = CoordinateInBlocks(0, 0, 0);
 CoordinateInBlocks location2 = CoordinateInBlocks(0, 0, 0);
-Shape shape = box;
+Shape shape = cube;
 BlockInfo fillType = BlockInfo(EBlockType::Air);
 std::stack<std::vector<BlockInfoLocation>> operations;
 
@@ -49,7 +49,7 @@ bool registerFillType = false;
 	Custom Functions for the mod
 *************************************************************/
 
-void setBox(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInfo fillType) {
+void setCube(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInfo fillType) {
 	std::vector<BlockInfoLocation> operation;
 
 	int xMin = min(location1.X, location2.X);
@@ -130,8 +130,8 @@ void setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType) {
 void setShape(Shape shape) {
 	switch (shape)
 	{
-	case box:
-		setBox(location1, location2, fillType);
+	case cube:
+		setCube(location1, location2, fillType);
 		break;
 	case sphere:
 	{
@@ -169,7 +169,7 @@ void undoOperation() {
 UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, PlaceableCrystalBlockID,
 								PlaceableGoldBlockID, PlaceableIronBlockID,
 								Location1, Location2,
-								BoxShape, SphereShape, CylinderShape, PyramidShape,
+								CubeShape, SphereShape, CylinderShape, PyramidShape,
 								RegisterFillType,
 								Set, Undo}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
@@ -204,8 +204,8 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 	case Location2:
 		location2 = At;
 		break;
-	case BoxShape:
-		shape = box;
+	case CubeShape:
+		shape = cube;
 		break;
 	case SphereShape:
 		shape = sphere;
