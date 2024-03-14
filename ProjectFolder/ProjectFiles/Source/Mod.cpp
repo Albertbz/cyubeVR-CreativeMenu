@@ -52,17 +52,17 @@ bool registerFillType = false;
 void setCube(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInfo fillType) {
 	std::vector<BlockInfoLocation> operation;
 
-	int xMin = min(location1.X, location2.X);
-	int xMax = max(location1.X, location2.X);
-	int yMin = min(location1.Y, location2.Y);
-	int yMax = max(location1.Y, location2.Y);
-	int zMin = min(location1.Z, location2.Z);
-	int zMax = max(location1.Z, location2.Z);
+	int64_t xMin = min(location1.X, location2.X);
+	int64_t xMax = max(location1.X, location2.X);
+	int64_t yMin = min(location1.Y, location2.Y);
+	int64_t yMax = max(location1.Y, location2.Y);
+	int16_t zMin = min(location1.Z, location2.Z);
+	int16_t zMax = max(location1.Z, location2.Z);
 
 
-	for (int x = xMin; x <= xMax; x++) {
-		for (int y = yMin; y <= yMax; y++) {
-			for (int z = zMin; z <= zMax; z++) {
+	for (int64_t x = xMin; x <= xMax; x++) {
+		for (int64_t y = yMin; y <= yMax; y++) {
+			for (int16_t z = zMin; z <= zMax; z++) {
 				CoordinateInBlocks location = CoordinateInBlocks(x, y, z);
 				BlockInfo type = GetAndSetBlock(location, fillType);
 				operation.push_back(BlockInfoLocation(type, location));
@@ -74,16 +74,16 @@ void setCube(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockIn
 }
 
 void setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType) {
+	std::vector<BlockInfoLocation> operation;
+	
 	radius += 0.5;
 	double radiusSq = radius * radius;
-	int ceilRadius = ceil(radius);
+	int16_t ceilRadius = (int16_t) ceil(radius);
 
-	std::vector<BlockInfoLocation> operation;
-
-	for (int x = 0; x <= ceilRadius; x++) {
-		for (int y = 0; y <= ceilRadius; y++) {
-			for (int z = 0; z <= ceilRadius; z++) {
-				double dSq = x * x + y * y + z * z;
+	for (int16_t x = 0; x <= ceilRadius; x++) {
+		for (int16_t y = 0; y <= ceilRadius; y++) {
+			for (int16_t z = 0; z <= ceilRadius; z++) {
+				int64_t dSq = x * x + y * y + z * z;
 
 				if (dSq > radiusSq) {
 					continue;
@@ -127,22 +127,53 @@ void setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType) {
 	operations.push(operation);
 }
 
-void setCylinder(CoordinateInBlocks center, double radius, int height, BlockInfo fillType) {
+void setCylinder(CoordinateInBlocks center, double radius, int16_t height, BlockInfo fillType) {
+	std::vector<BlockInfoLocation> operation;
+	
 	radius += 0.5;
 	double radiusSq = radius * radius;
-	int ceilRadius = ceil(radius);
+	int16_t ceilRadius = (int16_t) ceil(radius);
 
-	std::vector<BlockInfoLocation> operation;
-
-	for (int x = 0; x <= ceilRadius; x++) {
-		for (int y = 0; y <= ceilRadius; y++) {
+	for (int16_t x = 0; x <= ceilRadius; x++) {
+		for (int16_t y = 0; y <= ceilRadius; y++) {
 			double dSq = x * x + y * y;
 
 			if (dSq > radiusSq) {
 				continue;
 			}
 
-			for (int z = 0; z <= height; z++) {
+			for (int16_t z = 0; z <= height; z++) {
+				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+				BlockInfo type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(-x, y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(x, -y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(-x, -y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+			}
+		}
+	}
+
+	operations.push(operation);
+}
+
+void setPyramid(CoordinateInBlocks center, int16_t levels, BlockInfo fillType) {
+	std::vector<BlockInfoLocation> operation;
+
+	int16_t level = levels;
+
+	for (int16_t z = 0; z <= levels; z++) {
+		level--;
+		for (int16_t x = 0; x <= level; x++) {
+			for (int16_t y = 0; y <= level; y++) {
 				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
 				BlockInfo type = GetAndSetBlock(location, fillType);
 				operation.push_back(BlockInfoLocation(type, location));
@@ -173,9 +204,9 @@ void setShape(Shape shape, BlockInfo fillType) {
 		break;
 	case sphere:
 	{
-		int xDiff = location1.X - location2.X;
-		int yDiff = location1.Y - location2.Y;
-		int zDiff = location1.Z - location2.Z;
+		int64_t xDiff = location1.X - location2.X;
+		int64_t yDiff = location1.Y - location2.Y;
+		int16_t zDiff = location1.Z - location2.Z;
 
 		double radius = sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
 		setSphere(location1, radius, fillType);
@@ -185,17 +216,23 @@ void setShape(Shape shape, BlockInfo fillType) {
 	{
 		CoordinateInBlocks center = CoordinateInBlocks(location1.X, location1.Y, min(location1.Z, location2.Z));
 
-		int xDiff = location1.X - location2.X;
-		int yDiff = location1.Y - location2.Y;
+		int64_t xDiff = location1.X - location2.X;
+		int64_t yDiff = location1.Y - location2.Y;
 
 		double radius = sqrt(xDiff * xDiff + yDiff * yDiff);
 
-		int height = abs(location1.Z - location2.Z);
+		int16_t height = abs(location1.Z - location2.Z);
 		setCylinder(center, radius, height, fillType);
 		break;
 	}
 	case pyramid:
+	{
+		CoordinateInBlocks diff = location1 - location2;
+		int16_t levels = (int16_t) max(abs(diff.X), max(abs(diff.Y), abs(diff.Z))) + 1;
+		
+		setPyramid(location1, levels, fillType);
 		break;
+	}
 	default:
 		break;
 	}
