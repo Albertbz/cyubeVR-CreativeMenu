@@ -127,7 +127,45 @@ void setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType) {
 	operations.push(operation);
 }
 
-void setShape(Shape shape) {
+void setCylinder(CoordinateInBlocks center, double radius, int height, BlockInfo fillType) {
+	radius += 0.5;
+	double radiusSq = radius * radius;
+	int ceilRadius = ceil(radius);
+
+	std::vector<BlockInfoLocation> operation;
+
+	for (int x = 0; x <= ceilRadius; x++) {
+		for (int y = 0; y <= ceilRadius; y++) {
+			double dSq = x * x + y * y;
+
+			if (dSq > radiusSq) {
+				continue;
+			}
+
+			for (int z = 0; z <= height; z++) {
+				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+				BlockInfo type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(-x, y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(x, -y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+
+				location = center + CoordinateInBlocks(-x, -y, z);
+				type = GetAndSetBlock(location, fillType);
+				operation.push_back(BlockInfoLocation(type, location));
+			}
+		}
+	}
+
+	operations.push(operation);
+}
+
+void setShape(Shape shape, BlockInfo fillType) {
 	switch (shape)
 	{
 	case cube:
@@ -144,7 +182,18 @@ void setShape(Shape shape) {
 		break;
 	}
 	case cylinder:
+	{
+		CoordinateInBlocks center = CoordinateInBlocks(location1.X, location1.Y, min(location1.Z, location2.Z));
+
+		int xDiff = location1.X - location2.X;
+		int yDiff = location1.Y - location2.Y;
+
+		double radius = sqrt(xDiff * xDiff + yDiff * yDiff);
+
+		int height = abs(location1.Z - location2.Z);
+		setCylinder(center, radius, height, fillType);
 		break;
+	}
 	case pyramid:
 		break;
 	default:
@@ -221,7 +270,7 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		registerFillType = true;
 		break;
 	case Set:
-		setShape(shape);
+		setShape(shape, fillType);
 		break;
 	case Undo:
 		undoOperation();
