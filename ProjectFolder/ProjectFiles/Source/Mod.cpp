@@ -200,13 +200,10 @@ void setPyramid(CoordinateInBlocks center, int16_t levels, BlockInfo fillType) {
 void setCone(CoordinateInCentimeters center, double radius, int16_t height, BlockInfo fillType) {
 	std::vector<BlockInfoLocation> operation;
 
-	Log(L"Original radius: " + std::to_wstring(radius));
-	Log(L"Height: " + std::to_wstring(height));
 	double deltaRadius = 0;
 	if (height > 0) {
 		deltaRadius = radius / height;
 	}
-	Log(L"deltaRadius " + std::to_wstring(deltaRadius));
 	
 	radius += 0.5;
 	double radiusSq = radius * radius;
@@ -214,18 +211,11 @@ void setCone(CoordinateInCentimeters center, double radius, int16_t height, Bloc
 	int64_t ceilRadius = (int64_t) ceil(radius);
 
 	for (int z = 0; z <= height; z++) {
-		Log(L"New radius: " + std::to_wstring(radius));
-		Log(L"Radius squared: " + std::to_wstring(radiusSq));
-		Log(L"Radius ceil: " + std::to_wstring(ceilRadius));
-
-		Log(L"Z: " + std::to_wstring(z));
 		for (int x = 0; x <= ceilRadius; x++) {
 			double xSq = x * x;
 			for (int y = 0; y <= ceilRadius; y++) {
-
 				double dSq = xSq + y * y;
 				
-				Log(L"Distance squared: " + std::to_wstring(dSq));
 				if (dSq > radiusSq) {
 					continue;
 				}
@@ -245,7 +235,6 @@ void setCone(CoordinateInCentimeters center, double radius, int16_t height, Bloc
 				location = center + CoordinateInBlocks(-x, -y, z);
 				type = GetAndSetBlock(location, fillType);
 				operation.push_back(BlockInfoLocation(type, location));
-
 			}
 		}
 
