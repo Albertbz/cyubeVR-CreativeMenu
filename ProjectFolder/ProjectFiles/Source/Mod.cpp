@@ -22,6 +22,7 @@ const int CylinderShape = 1174910537;
 const int PyramidShape = 210618550;
 const int ConeShape = 909836507;
 const int RegisterFillType = 1004850721;
+const int ToggleFilled = 1343228703;
 const int Set = 666103118;
 const int Undo = 205046945;
 
@@ -40,18 +41,20 @@ struct BlockInfoLocation {
 CoordinateInBlocks location1 = CoordinateInBlocks(0, 0, 0);
 CoordinateInBlocks location2 = CoordinateInBlocks(0, 0, 0);
 Shape shape = cuboid;
+bool filled = true;
 BlockInfo fillType = BlockInfo(EBlockType::Air);
 std::stack<std::vector<BlockInfoLocation>> operations;
 
 int timesToIgnoreBlockPlacement = 0;
 bool registerFillType = false;
 
+
 /************************************************************
 	Custom Functions for the mod
 *************************************************************/
 
-void setCuboid(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInfo fillType) {
-	std::vector<BlockInfoLocation> operation;
+std::vector<BlockInfoLocation> setCuboid(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInfo fillType, bool filled) {
+	std::vector<BlockInfoLocation> changedBlocks;
 
 	int64_t xMin = min(location1.X, location2.X);
 	int64_t xMax = max(location1.X, location2.X);
@@ -60,27 +63,35 @@ void setCuboid(CoordinateInBlocks location1, CoordinateInBlocks location2, Block
 	int16_t zMin = min(location1.Z, location2.Z);
 	int16_t zMax = max(location1.Z, location2.Z);
 
-
+	CoordinateInBlocks location;
 	for (int64_t x = xMin; x <= xMax; x++) {
 		for (int64_t y = yMin; y <= yMax; y++) {
 			for (int16_t z = zMin; z <= zMax; z++) {
-				CoordinateInBlocks location = CoordinateInBlocks(x, y, z);
+				location = CoordinateInBlocks(x, y, z);
+
+				if (!filled && !(x == xMin || x == xMax || y == yMin || y == yMax || z == zMin || z == zMax)) {
+					continue;
+				}
 				BlockInfo type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 			}
 		}
 	}
 
-	operations.push(operation);
+	return changedBlocks;
 }
 
-void setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType) {
-	std::vector<BlockInfoLocation> operation;
+std::vector<BlockInfoLocation> setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType, bool filled) {
+	std::vector<BlockInfoLocation> changedBlocks;
 	
 	radius += 0.5;
 	double radiusSq = radius * radius;
 	int16_t ceilRadius = (int16_t) ceil(radius);
 
+	double innerRadius = radius - 1;
+	double innerRadiusSq = innerRadius * innerRadius;
+
+	CoordinateInBlocks location;
 	for (int16_t x = 0; x <= ceilRadius; x++) {
 		for (int16_t y = 0; y <= ceilRadius; y++) {
 			for (int16_t z = 0; z <= ceilRadius; z++) {
@@ -90,51 +101,59 @@ void setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType) {
 					continue;
 				}
 
-				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+				if (!filled && dSq <= innerRadiusSq) {
+					continue;
+				}
+
+				location = center + CoordinateInBlocks(x, y, z);
 				BlockInfo type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 				
 				location = center + CoordinateInBlocks(-x, y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(x, -y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(x, y, -z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, -y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(x, -y, -z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, y, -z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, -y, -z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 			}
 		}
 	}
 
-	operations.push(operation);
+	return changedBlocks;
 }
 
-void setCylinder(CoordinateInBlocks center, double radius, int16_t height, BlockInfo fillType) {
-	std::vector<BlockInfoLocation> operation;
+std::vector<BlockInfoLocation> setCylinder(CoordinateInBlocks center, double radius, int16_t height, BlockInfo fillType, bool filled) {
+	std::vector<BlockInfoLocation> changedBlocks;
 	
 	radius += 0.5;
 	double radiusSq = radius * radius;
 	int64_t ceilRadius = (int64_t) ceil(radius);
 
+	double innerRadius = radius - 1;
+	double innerRadiusSq = innerRadius * innerRadius;
+
+	CoordinateInBlocks location;
 	for (int64_t x = 0; x <= ceilRadius; x++) {
 		for (int64_t y = 0; y <= ceilRadius; y++) {
 			double dSq = (double) x * x + y * y;
@@ -144,61 +163,71 @@ void setCylinder(CoordinateInBlocks center, double radius, int16_t height, Block
 			}
 
 			for (int16_t z = 0; z <= height; z++) {
-				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+				if (!filled && dSq <= innerRadiusSq && !(z == 0 || z == height)) {
+					continue;
+				}
+
+				location = center + CoordinateInBlocks(x, y, z);
 				BlockInfo type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(x, -y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, -y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 			}
 		}
 	}
 
-	operations.push(operation);
+	return changedBlocks;
 }
 
-void setPyramid(CoordinateInBlocks center, int16_t levels, BlockInfo fillType) {
-	std::vector<BlockInfoLocation> operation;
+std::vector<BlockInfoLocation> setPyramid(CoordinateInBlocks center, int16_t levels, BlockInfo fillType, bool filled) {
+	std::vector<BlockInfoLocation> changedBlocks;
 
 	int16_t level = levels;
 
+	CoordinateInBlocks location;
 	for (int16_t z = 0; z <= levels; z++) {
 		level--;
 		for (int16_t x = 0; x <= level; x++) {
 			for (int16_t y = 0; y <= level; y++) {
-				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+
+				if (!filled && !(x == level || y == level || z == 0 || z == levels)) {
+					continue;
+				}
+
+				location = center + CoordinateInBlocks(x, y, z);
 				BlockInfo type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(x, -y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, -y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 			}
 		}
 	}
 
-	operations.push(operation);
+	return changedBlocks;
 }
 
-void setCone(CoordinateInCentimeters center, double radius, int16_t height, BlockInfo fillType) {
-	std::vector<BlockInfoLocation> operation;
+std::vector<BlockInfoLocation> setCone(CoordinateInCentimeters center, double radius, int16_t height, BlockInfo fillType, bool filled) {
+	std::vector<BlockInfoLocation> changedBlocks;
 
 	double deltaRadius = 0;
 	if (height > 0) {
@@ -207,9 +236,15 @@ void setCone(CoordinateInCentimeters center, double radius, int16_t height, Bloc
 	
 	radius += 0.5;
 	double radiusSq = radius * radius;
-	
 	int64_t ceilRadius = (int64_t) ceil(radius);
 
+	double innerRadius = radius - 1;
+	double innerRadiusSq = innerRadius * innerRadius;
+
+	double nextRadius = radius - deltaRadius;
+	double nextRadiusSq = nextRadius * nextRadius;
+	
+	CoordinateInBlocks location;
 	for (int z = 0; z <= height; z++) {
 		for (int x = 0; x <= ceilRadius; x++) {
 			double xSq = x * x;
@@ -220,37 +255,49 @@ void setCone(CoordinateInCentimeters center, double radius, int16_t height, Bloc
 					continue;
 				}
 
-				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+				if (!filled && dSq <= innerRadiusSq && !(z == 0 || z == height) && dSq <= nextRadiusSq) {
+					continue;
+				}
+
+				location = center + CoordinateInBlocks(x, y, z);
 				BlockInfo type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(x, -y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 
 				location = center + CoordinateInBlocks(-x, -y, z);
 				type = GetAndSetBlock(location, fillType);
-				operation.push_back(BlockInfoLocation(type, location));
+				changedBlocks.push_back(BlockInfoLocation(type, location));
 			}
 		}
 
-		radius -= deltaRadius;
-		radiusSq = radius * radius;
+		radius = nextRadius;
+		radiusSq = nextRadiusSq;
 		ceilRadius = (int64_t) ceil(radius);
+
+		innerRadius = radius - 1;
+		innerRadiusSq = innerRadius * innerRadius;
+
+		nextRadius = radius - deltaRadius;
+		nextRadiusSq = nextRadius * nextRadius;
 	}
 
-	operations.push(operation);
+	return changedBlocks;
 }
 
-void setShape(Shape shape, BlockInfo fillType) {
+void setShape(Shape shape, BlockInfo fillType, bool filled) {
+	std::vector<BlockInfoLocation> changedBlocks;
+
 	switch (shape)
 	{
 	case cuboid:
-		setCuboid(location1, location2, fillType);
+		changedBlocks = setCuboid(location1, location2, fillType, filled);
 		break;
 	case sphere:
 	{
@@ -260,7 +307,7 @@ void setShape(Shape shape, BlockInfo fillType) {
 
 		double radius = sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
 
-		setSphere(location1, radius, fillType);
+		changedBlocks = setSphere(location1, radius, fillType, filled);
 		break;
 	}
 	case cylinder:
@@ -274,7 +321,7 @@ void setShape(Shape shape, BlockInfo fillType) {
 
 		int16_t height = abs(location1.Z - location2.Z);
 
-		setCylinder(center, radius, height, fillType);
+		changedBlocks = setCylinder(center, radius, height, fillType, filled);
 		break;
 	}
 	case pyramid:
@@ -282,7 +329,7 @@ void setShape(Shape shape, BlockInfo fillType) {
 		CoordinateInBlocks diff = location1 - location2;
 		int16_t levels = (int16_t) max(abs(diff.X), max(abs(diff.Y), abs(diff.Z))) + 1;
 		
-		setPyramid(location1, levels, fillType);
+		changedBlocks = setPyramid(location1, levels, fillType, filled);
 		break;
 	}
 	case cone:
@@ -295,12 +342,14 @@ void setShape(Shape shape, BlockInfo fillType) {
 
 		double radius = sqrt(xDiff * xDiff + yDiff * yDiff);
 
-		setCone(center, radius, height, fillType);
+		changedBlocks = setCone(center, radius, height, fillType, filled);
 		break;
 	}
 	default:
 		break;
 	}
+
+	operations.push(changedBlocks);
 }
 
 void undoOperation() {
@@ -319,6 +368,7 @@ void undoOperation() {
 
 UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, PlaceableCrystalBlockID,
 								PlaceableGoldBlockID, PlaceableIronBlockID,
+								ToggleFilled,
 								Location1, Location2,
 								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
 								RegisterFillType,
@@ -355,6 +405,9 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 	case Location2:
 		location2 = At;
 		break;
+	case ToggleFilled:
+		filled = !filled;
+		break;
 	case CuboidShape:
 		shape = cuboid;
 		break;
@@ -375,7 +428,7 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		registerFillType = true;
 		break;
 	case Set:
-		setShape(shape, fillType);
+		setShape(shape, fillType, filled);
 		break;
 	case Undo:
 		undoOperation();
