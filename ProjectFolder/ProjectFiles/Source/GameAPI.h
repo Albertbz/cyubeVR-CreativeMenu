@@ -29,7 +29,9 @@ using namespace ModAPI;
 * 
 *	The coordinate needs to be in the area of chunks that is currently loaded in memory, otherwise the return value is invalid.
 *	If you might call this further away from the player, call .IsValid() on the return value to check that. 
-	The default radius that is loaded around the player is 300 meters (600 blocks).
+*	The default radius that is loaded around the player is 300 meters (600 blocks).
+*
+*	Also, it is only valid to call this with a Z location within 0-799. The world in cyubeVR is 800 blocks tall, you can't get a block outside of those bounds.	
 */
 	BlockInfo GetBlock(CoordinateInBlocks At);
 
@@ -42,6 +44,9 @@ using namespace ModAPI;
 *	To delete a block, set it to the type EBlockType::Air
 * 
 *	The Rotation value is only necessary for torches. For all other types, you can ignore it.
+* 
+*	It is only allowed to call SetBlock with a Z location within 0-799. The world in cyubeVR is 800 blocks tall, you can't set a block outside of those bounds.
+	Calling SetBlock with a Z location outside of 0-799 will cause a crash with a helpful crash message explaining that a mod tried to do something at an invalid Z coordinate.
 */
 	bool SetBlock(CoordinateInBlocks At, EBlockType NativeType);
 	bool SetBlock(CoordinateInBlocks At, EBlockType NativeType, ERotation Rotation);
@@ -60,8 +65,16 @@ using namespace ModAPI;
 *	Show a hint text saying "I am a hint text" at the coordinate At for 5 seconds:				SpawnHintText(At, L"I am a hint text", 5);	
 *	A hint text with a new line:																SpawnHintText(At, L"First Line\nSecond Line", 5);
 *	A hint text that prints the value of an int variable MyInt:									SpawnHintText(At, L"My number is: " + std::to_wstring(MyInt), 5);
+* 
+*	SpawnHintTextAdvanced returns a handle that you can use to later manually destroy the hint text using the DestroyHintText function.
+*	If you use a DurationInSeconds of -1, the hint text will stay visible until you manually destroy it.
+* 
+*	SpawnHintTextAdvanced spawns a hint text exactly where you specify, while SpawnHintText spawns the hint text 20 cm above the location you specify.
 */
-	void SpawnHintText(CoordinateInCentimeters At, const wString& Text, float DurationInSeconds, float SizeMultiplier = 1, float SizeMultiplierVertical = 1);
+	void  SpawnHintText(CoordinateInCentimeters At, const wString& Text, float DurationInSeconds, float SizeMultiplier = 1, float SizeMultiplierVertical = 1);
+	void* SpawnHintTextAdvanced(CoordinateInCentimeters At, const wString& Text, float DurationInSeconds, float SizeMultiplier = 1, float SizeMultiplierVertical = 1, float FontSizeMultiplier = 1);
+
+	void  DestroyHintText(void*& Handle);
 
 /*
 *	Returns the current player location (feet location).
@@ -87,7 +100,15 @@ using namespace ModAPI;
 	DirectionVectorInCentimeters GetPlayerViewDirection();
 
 /*
+*	Sets the current player view direction as a unit vector. Changes the direction the player is facing. Only X and Y is considered.
+*/
+	void SetPlayerViewDirection(DirectionVectorInCentimeters To);
+
+/*
 *	Returns the current location of the hand of the player.
+* 
+*	Be careful if using the location returned by this in GetBlock or SetBlock! 
+*	The hand location might be out of bounds of the voxel world (not within 0-799 blocks in Z), using such an invalid location would cause a crash in GetBlock/SetBlock.
 */
 	CoordinateInCentimeters GetHandLocation(bool LeftHand);
 
@@ -97,9 +118,27 @@ using namespace ModAPI;
 	CoordinateInCentimeters GetIndexFingerTipLocation(bool LeftHand);
 
 /*
-*	Spawn a block item (a small cube you can craft with etc).
+*	Spawn a block item (a small cube you can craft with etc) at the specified location.
 */
 	void SpawnBlockItem(CoordinateInCentimeters At, BlockInfo Type);
+
+/*
+*	Consume one or multiple block items (a small cube you can craft with etc) in the specified area.
+* 
+*	In the "Type" array you can define which types of block items will be consumed. An empty "Type" array means that all types will be consumed.
+* 
+*	To define the area in which you want to consume block items, you can use either "RadiusInCentimeters" or "BoxExtentInCentimeters". 
+*	If "RadiusInCentimeters" is > 0, that is what is used to define the area, otherwise the "BoxExtentInCentimeters" is used.
+* 
+*	With "Amount" you can define how many block items you want to consume. 
+* 
+*	If you set "bOnlyTry" to true, the function will not actually consume (destroy) any block items, but the return data will still be the same, showing you which
+*	block items were found. So setting "bOnlyTry" to true is essentially a dry run.
+* 
+*	The return array contains all the block items that were consumed (or found). The size of the array that is returned will be at most the "Amount" you specified,
+*	but might also be less than the "Amount" you specified, if fewer block items were found in the area you defined.
+*/
+	std::vector<BlockInfoWithLocation> ConsumeBlockItems(CoordinateInCentimeters At, std::vector<BlockInfo> Type, int RadiusInCentimeters, CoordinateInCentimeters BoxExtentInCentimeters, int Amount, bool bOnlyTry = false);
 
 /*
 *	Add or remove one or multiple items to/from the inventory. 
@@ -111,6 +150,11 @@ using namespace ModAPI;
 *	Get the name of the currently loaded world.
 */
 	wString GetWorldName();
+
+/*
+*	Get the seed of the currently loaded world.
+*/
+	uint32_t GetWorldSeed();
 
 /*
 *	Get the current time of day. Returns a float between 0 and 2400. 0 and 2400 are the identical time, midnight. 1200 is mid-day.
@@ -171,6 +215,13 @@ using namespace ModAPI;
 	wString GetThisModSaveFolderPath(wString ModName);
 
 /*
+*	Returns a path for global mod data that is shared between different worlds. Usually, this is the wrong path to use, you should not use this for regular save files.
+*	If you want to make a mod that transfers data from one world to another,
+*	you would use this path, as the GetThisModSaveFolderPath function above returns a different path for each world.
+*/
+	wString GetThisModGlobalSaveFolderPath(wString ModName);
+
+/*
 *	Returns the version number of the game. The GameVersion type contains the major and the minor version number as individual integers, and a bool IsBetaBuild.
 */
 	GameVersion GetGameVersionNumber();
@@ -204,3 +255,19 @@ using namespace ModAPI;
 *	If both CreateIfNotExist and WaitUntilExist are false, you need to check if Handle.Valid == true before accessing the pointer in it. Handle.Valid will be false then if the key does not exist.
 */
 	ScopedSharedMemoryHandle GetSharedMemoryPointer(wString Key, bool CreateIfNotExist, bool WaitUntilExist);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#include "GameAPITemplates.h"
