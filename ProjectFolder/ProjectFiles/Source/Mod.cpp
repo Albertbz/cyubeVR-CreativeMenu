@@ -21,40 +21,62 @@ const int SphereShape = 272127303;
 const int CylinderShape = 1174910537;
 const int PyramidShape = 210618550;
 const int ConeShape = 909836507;
-const int RegisterFillType = 1004850721;
 const int ToggleFilled = 1343228703;
+const int ToggleReplace = 1961506553;
+const int RegisterFillType = 1004850721;
+const int RegisterReplaceType = 1172271389;
 const int Set = 666103118;
 const int Undo = 205046945;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
-struct BlockInfoLocation {
-	BlockInfo type;
-	CoordinateInBlocks location;
-
-	BlockInfoLocation(BlockInfo type, CoordinateInBlocks location) {
-		this->type = type;
-		this->location = location;
-	}
-};
-
 CoordinateInBlocks location1 = CoordinateInBlocks(0, 0, 0);
 CoordinateInBlocks location2 = CoordinateInBlocks(0, 0, 0);
 Shape shape = cuboid;
 bool filled = true;
+bool replace = false;
 BlockInfo fillType = BlockInfo(EBlockType::Air);
-std::stack<std::vector<BlockInfoLocation>> operations;
+BlockInfo replaceType = BlockInfo(EBlockType::Air);
+std::stack<std::vector<BlockInfoWithLocation>> operations;
+void* hintText;
 
 int timesToIgnoreBlockPlacement = 0;
 bool registerFillType = false;
+bool registerReplaceType = false;
 
 
 /************************************************************
 	Custom Functions for the mod
 *************************************************************/
 
-std::vector<BlockInfoLocation> setCuboid(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInfo fillType, bool filled) {
-	std::vector<BlockInfoLocation> changedBlocks;
+bool isSameType(BlockInfo type1, BlockInfo type2) {
+	if (type1.Type == type2.Type) {
+		if (type1.Type == EBlockType::ModBlock) {
+			return type1.CustomBlockID == type2.CustomBlockID ? true : false;
+		}
+		
+		return true;
+	}
+	
+	return false;
+}
+
+void setBlockAtLocationAndUpdateChangedBlocks(CoordinateInBlocks location, BlockInfo fillType, std::vector<BlockInfoWithLocation>& changedBlocks) {
+	BlockInfo type = GetAndSetBlock(location, fillType);
+	changedBlocks.push_back(BlockInfoWithLocation(type, location));
+}
+
+void replaceBlockAtLocationAndUpdateChangedBlocks(CoordinateInBlocks location, BlockInfo fillType, BlockInfo replaceType, std::vector<BlockInfoWithLocation>& changedBlocks) {
+	BlockInfo type = GetBlock(location);
+
+	if (isSameType(type, replaceType)) {
+		SetBlock(location, fillType);
+		changedBlocks.push_back(BlockInfoWithLocation(type, location));
+	}
+}
+
+std::vector<BlockInfoWithLocation> setCuboid(CoordinateInBlocks location1, CoordinateInBlocks location2, BlockInfo fillType, bool filled, bool replace, BlockInfo replaceType) {
+	std::vector<BlockInfoWithLocation> changedBlocks;
 
 	int64_t xMin = min(location1.X, location2.X);
 	int64_t xMax = max(location1.X, location2.X);
@@ -72,8 +94,13 @@ std::vector<BlockInfoLocation> setCuboid(CoordinateInBlocks location1, Coordinat
 				if (!filled && !(x == xMin || x == xMax || y == yMin || y == yMax || z == zMin || z == zMax)) {
 					continue;
 				}
-				BlockInfo type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
+
+				if (replace) {
+					replaceBlockAtLocationAndUpdateChangedBlocks(location, fillType, replaceType, changedBlocks);
+				}
+				else {
+					setBlockAtLocationAndUpdateChangedBlocks(location, fillType, changedBlocks);
+				}
 			}
 		}
 	}
@@ -81,8 +108,8 @@ std::vector<BlockInfoLocation> setCuboid(CoordinateInBlocks location1, Coordinat
 	return changedBlocks;
 }
 
-std::vector<BlockInfoLocation> setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType, bool filled) {
-	std::vector<BlockInfoLocation> changedBlocks;
+std::vector<BlockInfoWithLocation> setSphere(CoordinateInBlocks center, double radius, BlockInfo fillType, bool filled, bool replace, BlockInfo replaceType) {
+	std::vector<BlockInfoWithLocation> changedBlocks;
 	
 	radius += 0.5;
 	double radiusSq = radius * radius;
@@ -91,11 +118,10 @@ std::vector<BlockInfoLocation> setSphere(CoordinateInBlocks center, double radiu
 	double innerRadius = radius - 1;
 	double innerRadiusSq = innerRadius * innerRadius;
 
-	CoordinateInBlocks location;
-	for (int16_t x = 0; x <= ceilRadius; x++) {
-		for (int16_t y = 0; y <= ceilRadius; y++) {
+	for (int64_t x = 0; x <= ceilRadius; x++) {
+		for (int64_t y = 0; y <= ceilRadius; y++) {
 			for (int16_t z = 0; z <= ceilRadius; z++) {
-				int64_t dSq = x * x + y * y + z * z;
+				int64_t dSq = x * x + y * y + (int64_t) z * z;
 
 				if (dSq > radiusSq) {
 					continue;
@@ -105,37 +131,26 @@ std::vector<BlockInfoLocation> setSphere(CoordinateInBlocks center, double radiu
 					continue;
 				}
 
-				location = center + CoordinateInBlocks(x, y, z);
-				BlockInfo type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-				
-				location = center + CoordinateInBlocks(-x, y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(x, -y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(x, y, -z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, -y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(x, -y, -z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, y, -z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, -y, -z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
+				if (replace) {
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, -z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, -z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, -z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, -z), fillType, replaceType, changedBlocks);
+				}
+				else {
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, -z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, -z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, -z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, -z), fillType, changedBlocks);
+				}
 			}
 		}
 	}
@@ -143,8 +158,8 @@ std::vector<BlockInfoLocation> setSphere(CoordinateInBlocks center, double radiu
 	return changedBlocks;
 }
 
-std::vector<BlockInfoLocation> setCylinder(CoordinateInBlocks center, double radius, int16_t height, BlockInfo fillType, bool filled) {
-	std::vector<BlockInfoLocation> changedBlocks;
+std::vector<BlockInfoWithLocation> setCylinder(CoordinateInBlocks center, double radius, int16_t height, BlockInfo fillType, bool filled, bool replace, BlockInfo replaceType) {
+	std::vector<BlockInfoWithLocation> changedBlocks;
 	
 	radius += 0.5;
 	double radiusSq = radius * radius;
@@ -153,7 +168,6 @@ std::vector<BlockInfoLocation> setCylinder(CoordinateInBlocks center, double rad
 	double innerRadius = radius - 1;
 	double innerRadiusSq = innerRadius * innerRadius;
 
-	CoordinateInBlocks location;
 	for (int64_t x = 0; x <= ceilRadius; x++) {
 		for (int64_t y = 0; y <= ceilRadius; y++) {
 			double dSq = (double) x * x + y * y;
@@ -167,21 +181,18 @@ std::vector<BlockInfoLocation> setCylinder(CoordinateInBlocks center, double rad
 					continue;
 				}
 
-				location = center + CoordinateInBlocks(x, y, z);
-				BlockInfo type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(x, -y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, -y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
+				if (replace) {
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, replaceType, changedBlocks);
+				}
+				else {
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, changedBlocks);
+				}
 			}
 		}
 	}
@@ -189,12 +200,11 @@ std::vector<BlockInfoLocation> setCylinder(CoordinateInBlocks center, double rad
 	return changedBlocks;
 }
 
-std::vector<BlockInfoLocation> setPyramid(CoordinateInBlocks center, int16_t levels, BlockInfo fillType, bool filled) {
-	std::vector<BlockInfoLocation> changedBlocks;
+std::vector<BlockInfoWithLocation> setPyramid(CoordinateInBlocks center, int16_t levels, BlockInfo fillType, bool filled, bool replace, BlockInfo replaceType) {
+	std::vector<BlockInfoWithLocation> changedBlocks;
 
 	int16_t level = levels;
 
-	CoordinateInBlocks location;
 	for (int16_t z = 0; z <= levels; z++) {
 		level--;
 		for (int16_t x = 0; x <= level; x++) {
@@ -204,21 +214,18 @@ std::vector<BlockInfoLocation> setPyramid(CoordinateInBlocks center, int16_t lev
 					continue;
 				}
 
-				location = center + CoordinateInBlocks(x, y, z);
-				BlockInfo type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(x, -y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, -y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
+				if (replace) {
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, replaceType, changedBlocks);
+				}
+				else {
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, changedBlocks);
+				}
 			}
 		}
 	}
@@ -226,8 +233,8 @@ std::vector<BlockInfoLocation> setPyramid(CoordinateInBlocks center, int16_t lev
 	return changedBlocks;
 }
 
-std::vector<BlockInfoLocation> setCone(CoordinateInCentimeters center, double radius, int16_t height, BlockInfo fillType, bool filled) {
-	std::vector<BlockInfoLocation> changedBlocks;
+std::vector<BlockInfoWithLocation> setCone(CoordinateInCentimeters center, double radius, int16_t height, BlockInfo fillType, bool filled, bool replace, BlockInfo replaceType) {
+	std::vector<BlockInfoWithLocation> changedBlocks;
 
 	double deltaRadius = 0;
 	if (height > 0) {
@@ -244,7 +251,6 @@ std::vector<BlockInfoLocation> setCone(CoordinateInCentimeters center, double ra
 	double nextRadius = radius - deltaRadius;
 	double nextRadiusSq = nextRadius * nextRadius;
 	
-	CoordinateInBlocks location;
 	for (int z = 0; z <= height; z++) {
 		for (int x = 0; x <= ceilRadius; x++) {
 			double xSq = x * x;
@@ -259,21 +265,18 @@ std::vector<BlockInfoLocation> setCone(CoordinateInCentimeters center, double ra
 					continue;
 				}
 
-				location = center + CoordinateInBlocks(x, y, z);
-				BlockInfo type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(x, -y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
-
-				location = center + CoordinateInBlocks(-x, -y, z);
-				type = GetAndSetBlock(location, fillType);
-				changedBlocks.push_back(BlockInfoLocation(type, location));
+				if (replace) {
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, replaceType, changedBlocks);
+				}
+				else {
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, changedBlocks);
+				}
 			}
 		}
 
@@ -291,13 +294,13 @@ std::vector<BlockInfoLocation> setCone(CoordinateInCentimeters center, double ra
 	return changedBlocks;
 }
 
-void setShape(Shape shape, BlockInfo fillType, bool filled) {
-	std::vector<BlockInfoLocation> changedBlocks;
+void setShape(Shape shape, BlockInfo fillType, bool filled, bool replace, BlockInfo replaceType) {
+	std::vector<BlockInfoWithLocation> changedBlocks;
 
 	switch (shape)
 	{
 	case cuboid:
-		changedBlocks = setCuboid(location1, location2, fillType, filled);
+		changedBlocks = setCuboid(location1, location2, fillType, filled, replace, replaceType);
 		break;
 	case sphere:
 	{
@@ -307,7 +310,7 @@ void setShape(Shape shape, BlockInfo fillType, bool filled) {
 
 		double radius = sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
 
-		changedBlocks = setSphere(location1, radius, fillType, filled);
+		changedBlocks = setSphere(location1, radius, fillType, filled, replace, replaceType);
 		break;
 	}
 	case cylinder:
@@ -321,7 +324,7 @@ void setShape(Shape shape, BlockInfo fillType, bool filled) {
 
 		int16_t height = abs(location1.Z - location2.Z);
 
-		changedBlocks = setCylinder(center, radius, height, fillType, filled);
+		changedBlocks = setCylinder(center, radius, height, fillType, filled, replace, replaceType);
 		break;
 	}
 	case pyramid:
@@ -329,7 +332,7 @@ void setShape(Shape shape, BlockInfo fillType, bool filled) {
 		CoordinateInBlocks diff = location1 - location2;
 		int16_t levels = (int16_t) max(abs(diff.X), max(abs(diff.Y), abs(diff.Z))) + 1;
 		
-		changedBlocks = setPyramid(location1, levels, fillType, filled);
+		changedBlocks = setPyramid(location1, levels, fillType, filled, replace, replaceType);
 		break;
 	}
 	case cone:
@@ -342,21 +345,27 @@ void setShape(Shape shape, BlockInfo fillType, bool filled) {
 
 		double radius = sqrt(xDiff * xDiff + yDiff * yDiff);
 
-		changedBlocks = setCone(center, radius, height, fillType, filled);
+		changedBlocks = setCone(center, radius, height, fillType, filled, replace, replaceType);
 		break;
 	}
 	default:
 		break;
 	}
 
+	size_t amountOfChangedBlocks = changedBlocks.size();
+	
+	DestroyHintText(hintText);
+	std::wstring text = amountOfChangedBlocks == 1 ? L"1 block was changed." : std::to_wstring(amountOfChangedBlocks) + L" blocks were changed.";
+	hintText = SpawnHintTextAdvanced(GetPlayerLocationHead() + GetPlayerViewDirection() * 50, text, 5, 0.5);
+
 	operations.push(changedBlocks);
 }
 
 void undoOperation() {
-	std::vector<BlockInfoLocation> operation = operations.top();
+	std::vector<BlockInfoWithLocation> operation = operations.top();
 
 	for (auto& block : operation) {
-		SetBlock(block.location, block.type);
+		SetBlock(block.Location, block.Info);
 	}
 
 	operations.pop();
@@ -368,10 +377,10 @@ void undoOperation() {
 
 UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, PlaceableCrystalBlockID,
 								PlaceableGoldBlockID, PlaceableIronBlockID,
-								ToggleFilled,
+								ToggleFilled, ToggleReplace,
 								Location1, Location2,
 								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
-								RegisterFillType,
+								RegisterFillType, RegisterReplaceType,
 								Set, Undo}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
@@ -408,6 +417,9 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 	case ToggleFilled:
 		filled = !filled;
 		break;
+	case ToggleReplace:
+		replace = !replace;
+		break;
 	case CuboidShape:
 		shape = cuboid;
 		break;
@@ -427,8 +439,12 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		timesToIgnoreBlockPlacement = 2;
 		registerFillType = true;
 		break;
+	case RegisterReplaceType:
+		timesToIgnoreBlockPlacement = 2;
+		registerReplaceType = true;
+		break;
 	case Set:
-		setShape(shape, fillType, filled);
+		setShape(shape, fillType, filled, replace, replaceType);
 		break;
 	case Undo:
 		undoOperation();
@@ -487,6 +503,10 @@ void Event_AnyBlockPlaced(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 	else if (registerFillType) {
 		registerFillType = false;
 		fillType = Type;
+	}
+	else if (registerReplaceType) {
+		registerReplaceType = false;
+		replaceType = Type;
 	}
 }
 
