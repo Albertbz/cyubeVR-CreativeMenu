@@ -27,6 +27,7 @@ const int RegisterFillType = 1004850721;
 const int RegisterReplaceType = 1172271389;
 const int Set = 666103118;
 const int Undo = 205046945;
+const int Redo = 861326958;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
@@ -37,7 +38,8 @@ bool filled = true;
 bool replace = false;
 BlockInfo fillType = BlockInfo(EBlockType::Air);
 BlockInfo replaceType = BlockInfo(EBlockType::Air);
-std::stack<std::vector<BlockInfoWithLocation>> operations;
+std::stack<std::vector<BlockInfoWithLocation>> undoOperations;
+std::stack<std::vector<BlockInfoWithLocation>> redoOperations;
 void* hintText;
 
 int timesToIgnoreBlockPlacement = 0;
@@ -55,6 +57,9 @@ bool isSameType(BlockInfo type1, BlockInfo type2) {
 			return type1.CustomBlockID == type2.CustomBlockID ? true : false;
 		}
 		
+		return true;
+	}
+	else if ((type1.Type == EBlockType::Stone && type2.Type == EBlockType::StoneMined) || (type2.Type == EBlockType::Stone && type1.Type == EBlockType::StoneMined)) {
 		return true;
 	}
 	
@@ -358,17 +363,30 @@ void setShape(Shape shape, BlockInfo fillType, bool filled, bool replace, BlockI
 	std::wstring text = amountOfChangedBlocks == 1 ? L"1 block was changed." : std::to_wstring(amountOfChangedBlocks) + L" blocks were changed.";
 	hintText = SpawnHintTextAdvanced(GetPlayerLocationHead() + GetPlayerViewDirection() * 50, text, 5, 0.5);
 
-	operations.push(changedBlocks);
+	undoOperations.push(changedBlocks);
+	redoOperations = std::stack<std::vector<BlockInfoWithLocation>>(); // Empty the stack
+}
+
+void DoOperationAndUpdateOther(std::stack<std::vector<BlockInfoWithLocation>>& toDo, std::stack<std::vector<BlockInfoWithLocation>>& toUpdate) {
+	std::vector<BlockInfoWithLocation> operation = toDo.top();
+	std::vector<BlockInfoWithLocation> newOperation;
+
+
+	for (auto& block : operation) {
+		BlockInfo type = GetAndSetBlock(block.Location, block.Info);
+		newOperation.push_back(BlockInfoWithLocation(type, block.Location));
+	}
+
+	toUpdate.push(newOperation);
+	toDo.pop();
 }
 
 void undoOperation() {
-	std::vector<BlockInfoWithLocation> operation = operations.top();
+	DoOperationAndUpdateOther(undoOperations, redoOperations);
+}
 
-	for (auto& block : operation) {
-		SetBlock(block.Location, block.Info);
-	}
-
-	operations.pop();
+void redoOperation() {
+	DoOperationAndUpdateOther(redoOperations, undoOperations);
 }
 
 /************************************************************
@@ -381,7 +399,7 @@ UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, Pl
 								Location1, Location2,
 								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
 								RegisterFillType, RegisterReplaceType,
-								Set, Undo}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+								Set, Undo, Redo}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -448,6 +466,9 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		break;
 	case Undo:
 		undoOperation();
+		break;
+	case Redo:
+		redoOperation();
 		break;
 	}
 }
