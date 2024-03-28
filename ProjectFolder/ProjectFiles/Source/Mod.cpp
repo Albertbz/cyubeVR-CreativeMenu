@@ -28,6 +28,7 @@ const int RegisterReplaceType = 1172271389;
 const int Set = 666103118;
 const int Undo = 205046945;
 const int Redo = 861326958;
+const int Save = 1564423633;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
@@ -46,6 +47,9 @@ int timesToIgnoreBlockPlacement = 0;
 bool registerFillType = false;
 bool registerReplaceType = false;
 
+namespace fs = std::filesystem;
+
+fs::path savedBuildsPath;
 
 /************************************************************
 	Custom Functions for the mod
@@ -389,6 +393,94 @@ void redoOperation() {
 	DoOperationAndUpdateOther(redoOperations, undoOperations);
 }
 
+void writeBuildToFile(std::vector<BlockInfoWithLocation> build, fs::path filePath) {
+	// Create file
+	std::ofstream out(filePath, std::ios::binary);
+
+	// Write the size of the vector
+	size_t vectorSize = build.size();
+	out.write(reinterpret_cast<char*>(&vectorSize), sizeof vectorSize);
+
+	// Write the vector data
+	for (size_t i = 0; i < vectorSize; i++) {
+		// Write the location
+		out.write(reinterpret_cast<char*>(&build[i].Location.X), sizeof build[i].Location.X);
+		out.write(reinterpret_cast<char*>(&build[i].Location.Y), sizeof build[i].Location.Y);
+		out.write(reinterpret_cast<char*>(&build[i].Location.Z), sizeof build[i].Location.Z);
+
+		// Write the type
+		out.write(reinterpret_cast<char*>(&build[i].Info.Type), sizeof build[i].Info.Type);
+		out.write(reinterpret_cast<char*>(&build[i].Info.CustomBlockID), sizeof build[i].Info.CustomBlockID);
+		out.write(reinterpret_cast<char*>(&build[i].Info.Rotation), sizeof build[i].Info.Rotation);
+	}
+}
+
+std::vector<BlockInfoWithLocation> readBuildFromFile(fs::path filePath) {
+	std::vector<BlockInfoWithLocation> build;
+
+	std::ifstream in(filePath, std::ios::binary);
+
+	// Read the size of the vector
+	size_t vectorSize = 0;
+	in.read(reinterpret_cast<char*>(&vectorSize), sizeof vectorSize);
+
+	// Read the vector data
+	for (size_t i = 0; i < vectorSize; i++) {
+		BlockInfoWithLocation block;
+
+		// Read the location
+		in.read(reinterpret_cast<char*>(&block.Location.X), sizeof block.Location.X);
+		in.read(reinterpret_cast<char*>(&block.Location.Y), sizeof block.Location.Y);
+		in.read(reinterpret_cast<char*>(&block.Location.Z), sizeof block.Location.Z);
+
+		// Read the type
+		in.read(reinterpret_cast<char*>(&block.Info.Type), sizeof block.Info.Type);
+		in.read(reinterpret_cast<char*>(&block.Info.CustomBlockID), sizeof block.Info.CustomBlockID);
+		in.read(reinterpret_cast<char*>(&block.Info.Rotation), sizeof block.Info.Rotation);
+		
+		// Add to the vector
+		build.push_back(block);
+	}
+
+	return build;
+}
+
+void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
+	std::vector<BlockInfoWithLocation> selection;
+
+	int64_t xMin = min(location1.X, location2.X);
+	int64_t xMax = max(location1.X, location2.X);
+	int64_t yMin = min(location1.Y, location2.Y);
+	int64_t yMax = max(location1.Y, location2.Y);
+	int16_t zMin = min(location1.Z, location2.Z);
+	int16_t zMax = max(location1.Z, location2.Z);
+
+	CoordinateInBlocks startLocation = CoordinateInBlocks(xMin, yMin, zMin);
+
+	CoordinateInBlocks location;
+	BlockInfo type;
+	for (int64_t x = xMin; x <= xMax; x++) {
+		for (int64_t y = yMin; y <= yMax; y++) {
+			for (int16_t z = zMin; z <= zMax; z++) {
+				location = CoordinateInBlocks(x, y, z);
+				type = GetBlock(location);
+				selection.push_back(BlockInfoWithLocation(type, location - startLocation));
+			}
+		}
+	}
+
+	std::time_t time = std::time(nullptr);
+	std::tm timestamp;
+	errno_t err = localtime_s(&timestamp, &time);
+	std::wstringstream wss;
+	wss << std::put_time(&timestamp, L"%F %H-%M-%S");
+	std::wstring nameOfFile = GetWorldName() + L" " + wss.str();
+
+	fs::path filePath = savedBuildsPath / nameOfFile;
+
+	writeBuildToFile(selection, filePath);
+}
+
 /************************************************************
 	Config Variables (Set these to whatever you need. They are automatically read by the game.)
 *************************************************************/
@@ -399,7 +491,8 @@ UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, Pl
 								Location1, Location2,
 								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
 								RegisterFillType, RegisterReplaceType,
-								Set, Undo, Redo}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+								Set, Undo, Redo,
+								Save}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -470,6 +563,9 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 	case Redo:
 		redoOperation();
 		break;
+	case Save:
+		saveSelection(location1, location2);
+		break;
 	}
 }
 
@@ -499,7 +595,10 @@ void Event_Tick()
 // Run once when the world is loaded
 void Event_OnLoad(bool CreatedNewWorld)
 {
-	
+	// Create the SavedBuilds folder and save the path
+	std::wstring globalModFolderPath = GetThisModGlobalSaveFolderPath(L"CreativeMenu");
+	savedBuildsPath = fs::path::path(globalModFolderPath) / "SavedBuilds";
+	bool createdDirectory = fs::create_directory(savedBuildsPath);
 }
 
 // Run once when the world is exited
