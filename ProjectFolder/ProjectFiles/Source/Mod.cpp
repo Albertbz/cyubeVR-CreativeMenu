@@ -3,6 +3,7 @@
 #include <iostream>
 #include <filesystem>
 #include <stack>
+#include <map>
 
 /************************************************************
 	Custom Variables for the mod
@@ -29,6 +30,8 @@ const int Set = 666103118;
 const int Undo = 205046945;
 const int Redo = 861326958;
 const int Save = 1564423633;
+const int Refresh = 1953081933;
+const int Remove = 1136264579;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
@@ -46,10 +49,18 @@ void* hintText;
 int timesToIgnoreBlockPlacement = 0;
 bool registerFillType = false;
 bool registerReplaceType = false;
+bool registerRemove = false;
 
 namespace fs = std::filesystem;
 
 fs::path savedBuildsPath;
+
+struct BuildInfo {
+	fs::path path;
+	std::vector<BlockInfoWithLocation> build;
+};
+
+std::map<int, BuildInfo> builds;
 
 /************************************************************
 	Custom Functions for the mod
@@ -445,6 +456,44 @@ std::vector<BlockInfoWithLocation> readBuildFromFile(fs::path filePath) {
 	return build;
 }
 
+/*
+	Write the names and IDs of builds to file and update the map of builds.
+*/
+void refreshBuilds() {
+	std::wstring installFolderPath = GetThisModInstallFolderPath();
+	std::wstring ue4ModsFolderPath = installFolderPath.substr(0, installFolderPath.find(L"APIMods")) + L"UE4Mods\\CreativeMenu__V1";
+
+	std::ofstream file = std::ofstream{ ue4ModsFolderPath + L"\\Builds" };
+
+	builds.clear();
+
+	for (const auto& entry : fs::directory_iterator(savedBuildsPath)) {
+		fs::path path = entry.path();
+
+		// If extension is not correct, skip the file
+		if (path.extension() != ".cyubeVRBuild") {
+			continue;
+		}
+
+		int id = GetRandomInt<1, 2147483646>();
+		file << path.filename().replace_extension().string() << '|' << id << ':';
+
+		std::vector<BlockInfoWithLocation> build = readBuildFromFile(path);
+
+		builds.insert({ id, BuildInfo(path, build) });
+	}
+
+	SpawnBPModActor(GetPlayerLocation(), L"CreativeMenu", L"RefreshBuilds");
+}
+
+void removeBuild(int id) {
+	BuildInfo buildInfo = builds.find(id)->second;
+
+	fs::remove(buildInfo.path);
+
+	refreshBuilds();
+}
+
 void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
 	std::vector<BlockInfoWithLocation> selection;
 
@@ -474,11 +523,13 @@ void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
 	errno_t err = localtime_s(&timestamp, &time);
 	std::wstringstream wss;
 	wss << std::put_time(&timestamp, L"%F %H-%M-%S");
-	std::wstring nameOfFile = GetWorldName() + L" " + wss.str();
+	std::wstring nameOfFile = GetWorldName() + L" " + wss.str() + L".cyubeVRBuild";
 
 	fs::path filePath = savedBuildsPath / nameOfFile;
 
 	writeBuildToFile(selection, filePath);
+
+	refreshBuilds();
 }
 
 /************************************************************
@@ -492,7 +543,7 @@ UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, Pl
 								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
 								RegisterFillType, RegisterReplaceType,
 								Set, Undo, Redo,
-								Save}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+								Save, Refresh, Remove}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -566,6 +617,13 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 	case Save:
 		saveSelection(location1, location2);
 		break;
+	case Refresh:
+		refreshBuilds();
+		break;
+	case Remove:
+		timesToIgnoreBlockPlacement = 2;
+		registerRemove = true;
+		break;
 	}
 }
 
@@ -599,6 +657,7 @@ void Event_OnLoad(bool CreatedNewWorld)
 	std::wstring globalModFolderPath = GetThisModGlobalSaveFolderPath(L"CreativeMenu");
 	savedBuildsPath = fs::path::path(globalModFolderPath) / "SavedBuilds";
 	bool createdDirectory = fs::create_directory(savedBuildsPath);
+	refreshBuilds();
 }
 
 // Run once when the world is exited
@@ -627,6 +686,10 @@ void Event_AnyBlockPlaced(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 	else if (registerReplaceType) {
 		registerReplaceType = false;
 		replaceType = Type;
+	}
+	else if (registerRemove) {
+		registerRemove = false;
+		removeBuild(Type.CustomBlockID);
 	}
 }
 
