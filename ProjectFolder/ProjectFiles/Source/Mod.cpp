@@ -32,6 +32,7 @@ const int Redo = 861326958;
 const int Save = 1564423633;
 const int Refresh = 1953081933;
 const int Remove = 1136264579;
+const int Open = 1926803967;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
@@ -522,7 +523,7 @@ void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
 	std::tm timestamp;
 	errno_t err = localtime_s(&timestamp, &time);
 	std::wstringstream wss;
-	wss << std::put_time(&timestamp, L"%F %H-%M-%S");
+	wss << std::put_time(&timestamp, L"%d-%m-%y %H-%M-%S");
 	std::wstring nameOfFile = GetWorldName() + L" " + wss.str() + L".cyubeVRBuild";
 
 	fs::path filePath = savedBuildsPath / nameOfFile;
@@ -530,6 +531,10 @@ void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
 	writeBuildToFile(selection, filePath);
 
 	refreshBuilds();
+}
+
+void openBuildsFolder() {
+	ShellExecuteA(NULL, "explore", savedBuildsPath.string().c_str(), NULL, NULL, SW_SHOWDEFAULT);
 }
 
 /************************************************************
@@ -543,7 +548,7 @@ UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, Pl
 								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
 								RegisterFillType, RegisterReplaceType,
 								Set, Undo, Redo,
-								Save, Refresh, Remove}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+								Save, Refresh, Open, Remove}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -619,6 +624,9 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		break;
 	case Refresh:
 		refreshBuilds();
+		break;
+	case Open:
+		openBuildsFolder();
 		break;
 	case Remove:
 		timesToIgnoreBlockPlacement = 2;
