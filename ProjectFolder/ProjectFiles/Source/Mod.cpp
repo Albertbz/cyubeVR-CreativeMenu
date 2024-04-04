@@ -33,6 +33,8 @@ const int Save = 1564423633;
 const int Refresh = 1953081933;
 const int Remove = 1136264579;
 const int Open = 1926803967;
+const int RegisterLoadID = 756713455;
+const int SetLoad = 1836453716;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
@@ -46,11 +48,13 @@ BlockInfo replaceType = BlockInfo(EBlockType::Air);
 std::stack<std::vector<BlockInfoWithLocation>> undoOperations;
 std::stack<std::vector<BlockInfoWithLocation>> redoOperations;
 void* hintText;
+int loadID = 0;
 
 int timesToIgnoreBlockPlacement = 0;
 bool registerFillType = false;
 bool registerReplaceType = false;
 bool registerRemove = false;
+bool registerLoad = false;
 
 namespace fs = std::filesystem;
 
@@ -58,7 +62,10 @@ fs::path savedBuildsPath;
 
 struct BuildInfo {
 	fs::path path;
-	std::vector<BlockInfoWithLocation> build;
+	std::vector<BlockInfoWithLocation> blocks;
+	int depth;
+	int width;
+	int height;
 };
 
 std::map<int, BuildInfo> builds;
@@ -315,6 +322,11 @@ std::vector<BlockInfoWithLocation> setCone(CoordinateInCentimeters center, doubl
 	return changedBlocks;
 }
 
+void newOperation(std::vector<BlockInfoWithLocation> changedBlocks) {
+	undoOperations.push(changedBlocks);
+	redoOperations = std::stack<std::vector<BlockInfoWithLocation>>(); // Empty the stack
+}
+
 void setShape(Shape shape, BlockInfo fillType, bool filled, bool replace, BlockInfo replaceType) {
 	std::vector<BlockInfoWithLocation> changedBlocks;
 
@@ -379,8 +391,7 @@ void setShape(Shape shape, BlockInfo fillType, bool filled, bool replace, BlockI
 	std::wstring text = amountOfChangedBlocks == 1 ? L"1 block was changed." : std::to_wstring(amountOfChangedBlocks) + L" blocks were changed.";
 	hintText = SpawnHintTextAdvanced(GetPlayerLocationHead() + GetPlayerViewDirection() * 50, text, 5, 0.5);
 
-	undoOperations.push(changedBlocks);
-	redoOperations = std::stack<std::vector<BlockInfoWithLocation>>(); // Empty the stack
+	newOperation(changedBlocks);
 }
 
 void DoOperationAndUpdateOther(std::stack<std::vector<BlockInfoWithLocation>>& toDo, std::stack<std::vector<BlockInfoWithLocation>>& toUpdate) {
@@ -405,32 +416,44 @@ void redoOperation() {
 	DoOperationAndUpdateOther(redoOperations, undoOperations);
 }
 
-void writeBuildToFile(std::vector<BlockInfoWithLocation> build, fs::path filePath) {
+void writeBuildToFile(BuildInfo buildInfo) {
 	// Create file
-	std::ofstream out(filePath, std::ios::binary);
+	std::ofstream out(buildInfo.path, std::ios::binary);
+
+	// Write the depth, width and height of the build
+	out.write(reinterpret_cast<char*>(&buildInfo.depth), sizeof buildInfo.depth);
+	out.write(reinterpret_cast<char*>(&buildInfo.width), sizeof buildInfo.width);
+	out.write(reinterpret_cast<char*>(&buildInfo.height), sizeof buildInfo.height);
+
 
 	// Write the size of the vector
-	size_t vectorSize = build.size();
+	size_t vectorSize = buildInfo.blocks.size();
 	out.write(reinterpret_cast<char*>(&vectorSize), sizeof vectorSize);
 
 	// Write the vector data
 	for (size_t i = 0; i < vectorSize; i++) {
 		// Write the location
-		out.write(reinterpret_cast<char*>(&build[i].Location.X), sizeof build[i].Location.X);
-		out.write(reinterpret_cast<char*>(&build[i].Location.Y), sizeof build[i].Location.Y);
-		out.write(reinterpret_cast<char*>(&build[i].Location.Z), sizeof build[i].Location.Z);
+		out.write(reinterpret_cast<char*>(&buildInfo.blocks[i].Location.X), sizeof buildInfo.blocks[i].Location.X);
+		out.write(reinterpret_cast<char*>(&buildInfo.blocks[i].Location.Y), sizeof buildInfo.blocks[i].Location.Y);
+		out.write(reinterpret_cast<char*>(&buildInfo.blocks[i].Location.Z), sizeof buildInfo.blocks[i].Location.Z);
 
 		// Write the type
-		out.write(reinterpret_cast<char*>(&build[i].Info.Type), sizeof build[i].Info.Type);
-		out.write(reinterpret_cast<char*>(&build[i].Info.CustomBlockID), sizeof build[i].Info.CustomBlockID);
-		out.write(reinterpret_cast<char*>(&build[i].Info.Rotation), sizeof build[i].Info.Rotation);
+		out.write(reinterpret_cast<char*>(&buildInfo.blocks[i].Info.Type), sizeof buildInfo.blocks[i].Info.Type);
+		out.write(reinterpret_cast<char*>(&buildInfo.blocks[i].Info.CustomBlockID), sizeof buildInfo.blocks[i].Info.CustomBlockID);
+		out.write(reinterpret_cast<char*>(&buildInfo.blocks[i].Info.Rotation), sizeof buildInfo.blocks[i].Info.Rotation);
 	}
 }
 
-std::vector<BlockInfoWithLocation> readBuildFromFile(fs::path filePath) {
-	std::vector<BlockInfoWithLocation> build;
+BuildInfo readBuildFromFile(fs::path filePath) {
+	std::vector<BlockInfoWithLocation> blocks;
 
 	std::ifstream in(filePath, std::ios::binary);
+
+	// Read the depth, width and height of the build
+	int depth = 0, width = 0, height = 0;
+	in.read(reinterpret_cast<char*>(&depth), sizeof depth);
+	in.read(reinterpret_cast<char*>(&width), sizeof width);
+	in.read(reinterpret_cast<char*>(&height), sizeof height);
 
 	// Read the size of the vector
 	size_t vectorSize = 0;
@@ -451,10 +474,10 @@ std::vector<BlockInfoWithLocation> readBuildFromFile(fs::path filePath) {
 		in.read(reinterpret_cast<char*>(&block.Info.Rotation), sizeof block.Info.Rotation);
 		
 		// Add to the vector
-		build.push_back(block);
+		blocks.push_back(block);
 	}
 
-	return build;
+	return BuildInfo(filePath, blocks, depth, width, height);
 }
 
 /*
@@ -476,12 +499,12 @@ void refreshBuilds() {
 			continue;
 		}
 
+		BuildInfo buildInfo = readBuildFromFile(path);
+
 		int id = GetRandomInt<1, 2147483646>();
-		file << path.filename().replace_extension().string() << '|' << id << ':';
+		file << path.filename().replace_extension().string() << '|' << id << '|' << buildInfo.depth << '|' << buildInfo.width << '|' << buildInfo.height <<  ':';
 
-		std::vector<BlockInfoWithLocation> build = readBuildFromFile(path);
-
-		builds.insert({ id, BuildInfo(path, build) });
+		builds.insert({ id, buildInfo });
 	}
 
 	SpawnBPModActor(GetPlayerLocation(), L"CreativeMenu", L"RefreshBuilds");
@@ -528,13 +551,27 @@ void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
 
 	fs::path filePath = savedBuildsPath / nameOfFile;
 
-	writeBuildToFile(selection, filePath);
+	BuildInfo buildInfo = BuildInfo(filePath, selection, (int) (xMax - xMin), (int) (yMax - yMin), zMax - zMin);
+
+	writeBuildToFile(buildInfo);
 
 	refreshBuilds();
 }
 
 void openBuildsFolder() {
-	ShellExecuteA(NULL, "explore", savedBuildsPath.string().c_str(), NULL, NULL, SW_SHOWDEFAULT);
+	ShellExecuteA(NULL, "open", savedBuildsPath.string().c_str(), NULL, NULL, SW_SHOWDEFAULT);
+}
+
+void setBuild(CoordinateInBlocks location, int buildID) {
+	std::vector<BlockInfoWithLocation> changedBlocks;
+
+	BuildInfo buildInfo = builds.find(buildID)->second;
+
+	for (BlockInfoWithLocation block : buildInfo.blocks) {
+		setBlockAtLocationAndUpdateChangedBlocks(location + block.Location, block.Info, changedBlocks);
+	}
+
+	newOperation(changedBlocks);
 }
 
 /************************************************************
@@ -548,7 +585,7 @@ UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, Pl
 								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
 								RegisterFillType, RegisterReplaceType,
 								Set, Undo, Redo,
-								Save, Refresh, Open, Remove}; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+								Save, Refresh, Open, Remove, RegisterLoadID, SetLoad }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -632,6 +669,13 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		timesToIgnoreBlockPlacement = 2;
 		registerRemove = true;
 		break;
+	case RegisterLoadID:
+		timesToIgnoreBlockPlacement = 2;
+		registerLoad = true;
+		break;
+	case SetLoad:
+		setBuild(At, loadID);
+		break;
 	}
 }
 
@@ -698,6 +742,10 @@ void Event_AnyBlockPlaced(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 	else if (registerRemove) {
 		registerRemove = false;
 		removeBuild(Type.CustomBlockID);
+	}
+	else if (registerLoad) {
+		registerLoad = false;
+		loadID = Type.CustomBlockID;
 	}
 }
 
