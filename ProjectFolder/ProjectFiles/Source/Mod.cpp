@@ -90,14 +90,14 @@ bool isSameType(BlockInfo type1, BlockInfo type2) {
 }
 
 void setBlockAtLocationAndUpdateChangedBlocks(CoordinateInBlocks location, BlockInfo fillType, std::vector<BlockInfoWithLocation>& changedBlocks) {
-	if (location.Z < 1 || location.Z > 599) return;
+	if (location.Z < 1 || location.Z > 799) return;
 
 	BlockInfo type = GetAndSetBlock(location, fillType);
 	changedBlocks.push_back(BlockInfoWithLocation(type, location));
 }
 
 void replaceBlockAtLocationAndUpdateChangedBlocks(CoordinateInBlocks location, BlockInfo fillType, BlockInfo replaceType, std::vector<BlockInfoWithLocation>& changedBlocks) {
-	if (location.Z < 1 || location.Z > 599) return;
+	if (location.Z < 1 || location.Z > 799) return;
 
 	BlockInfo type = GetBlock(location);
 
