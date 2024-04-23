@@ -90,11 +90,15 @@ bool isSameType(BlockInfo type1, BlockInfo type2) {
 }
 
 void setBlockAtLocationAndUpdateChangedBlocks(CoordinateInBlocks location, BlockInfo fillType, std::vector<BlockInfoWithLocation>& changedBlocks) {
+	if (location.Z < 1 || location.Z > 599) return;
+
 	BlockInfo type = GetAndSetBlock(location, fillType);
 	changedBlocks.push_back(BlockInfoWithLocation(type, location));
 }
 
 void replaceBlockAtLocationAndUpdateChangedBlocks(CoordinateInBlocks location, BlockInfo fillType, BlockInfo replaceType, std::vector<BlockInfoWithLocation>& changedBlocks) {
+	if (location.Z < 1 || location.Z > 599) return;
+
 	BlockInfo type = GetBlock(location);
 
 	if (isSameType(type, replaceType)) {
@@ -146,9 +150,9 @@ std::vector<BlockInfoWithLocation> setSphere(CoordinateInBlocks center, double r
 	double innerRadius = radius - 1;
 	double innerRadiusSq = innerRadius * innerRadius;
 
-	for (int64_t x = 0; x <= ceilRadius; x++) {
-		for (int64_t y = 0; y <= ceilRadius; y++) {
-			for (int16_t z = 0; z <= ceilRadius; z++) {
+	for (int64_t x = -ceilRadius; x <= ceilRadius; x++) {
+		for (int64_t y = -ceilRadius; y <= ceilRadius; y++) {
+			for (int16_t z = -ceilRadius; z <= ceilRadius; z++) {
 				int64_t dSq = x * x + y * y + (int64_t) z * z;
 
 				if (dSq > radiusSq) {
@@ -159,25 +163,13 @@ std::vector<BlockInfoWithLocation> setSphere(CoordinateInBlocks center, double r
 					continue;
 				}
 
+				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+
 				if (replace) {
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, -z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, -z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, -z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, -z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(location, fillType, replaceType, changedBlocks);
 				}
 				else {
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, -z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, -z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, -z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, -z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(location, fillType, changedBlocks);
 				}
 			}
 		}
@@ -196,8 +188,8 @@ std::vector<BlockInfoWithLocation> setCylinder(CoordinateInBlocks center, double
 	double innerRadius = radius - 1;
 	double innerRadiusSq = innerRadius * innerRadius;
 
-	for (int64_t x = 0; x <= ceilRadius; x++) {
-		for (int64_t y = 0; y <= ceilRadius; y++) {
+	for (int64_t x = -ceilRadius; x <= ceilRadius; x++) {
+		for (int64_t y = -ceilRadius; y <= ceilRadius; y++) {
 			double dSq = (double) x * x + y * y;
 
 			if (dSq > radiusSq) {
@@ -209,17 +201,13 @@ std::vector<BlockInfoWithLocation> setCylinder(CoordinateInBlocks center, double
 					continue;
 				}
 
+				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+
 				if (replace) {
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(location, fillType, replaceType, changedBlocks);
 				}
 				else {
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(location, fillType, changedBlocks);
 				}
 			}
 		}
@@ -235,24 +223,20 @@ std::vector<BlockInfoWithLocation> setPyramid(CoordinateInBlocks center, int16_t
 
 	for (int16_t z = 0; z <= levels; z++) {
 		level--;
-		for (int16_t x = 0; x <= level; x++) {
-			for (int16_t y = 0; y <= level; y++) {
+		for (int16_t x = -level; x <= level; x++) { 
+			for (int16_t y = -level; y <= level; y++) {
 
-				if (!filled && !(x == level || y == level || z == 0 || z == levels)) {
+				if (!filled && !(x == level || x == -level || y == level || y == -level || z == 0 || z == levels)) {
 					continue;
 				}
 
+				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+
 				if (replace) {
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(location, fillType, replaceType, changedBlocks);
 				}
 				else {
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(location, fillType, changedBlocks);
 				}
 			}
 		}
@@ -280,10 +264,10 @@ std::vector<BlockInfoWithLocation> setCone(CoordinateInCentimeters center, doubl
 	double nextRadiusSq = nextRadius * nextRadius;
 	
 	for (int z = 0; z <= height; z++) {
-		for (int x = 0; x <= ceilRadius; x++) {
-			double xSq = x * x;
-			for (int y = 0; y <= ceilRadius; y++) {
-				double dSq = xSq + y * y;
+		for (int64_t x = -ceilRadius; x <= ceilRadius; x++) {
+			int64_t xSq = x * x;
+			for (int64_t y = -ceilRadius; y <= ceilRadius; y++) {
+				int64_t dSq = xSq + y * y;
 				
 				if (dSq > radiusSq) {
 					continue;
@@ -293,17 +277,13 @@ std::vector<BlockInfoWithLocation> setCone(CoordinateInCentimeters center, doubl
 					continue;
 				}
 
+				CoordinateInBlocks location = center + CoordinateInBlocks(x, y, z);
+
 				if (replace) {
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, replaceType, changedBlocks);
-					replaceBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, replaceType, changedBlocks);
+					replaceBlockAtLocationAndUpdateChangedBlocks(location, fillType, replaceType, changedBlocks);
 				}
 				else {
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(x, -y, z), fillType, changedBlocks);
-					setBlockAtLocationAndUpdateChangedBlocks(center + CoordinateInBlocks(-x, -y, z), fillType, changedBlocks);
+					setBlockAtLocationAndUpdateChangedBlocks(location, fillType, changedBlocks);
 				}
 			}
 		}
