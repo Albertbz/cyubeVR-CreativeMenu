@@ -9,6 +9,8 @@
 	Custom Variables for the mod
 *************************************************************/
 
+int buildFileVersionNumber = 1;
+
 const int PlaceableCoalBlockID = 1169799691;
 const int PlaceableCopperBlockID = 1169799692;
 const int PlaceableCrystalBlockID = 1169799693;
@@ -62,10 +64,13 @@ fs::path savedBuildsPath;
 
 struct BuildInfo {
 	fs::path path;
-	std::vector<BlockInfoWithLocation> blocks;
+	std::wstring timeOfCreation;
 	int depth;
 	int width;
 	int height;
+	std::map<EBlockType, int> nativeMaterials;
+	std::map<UniqueID, int> customMaterials;
+	std::vector<BlockInfoWithLocation> blocks;
 };
 
 std::map<int, BuildInfo> builds;
@@ -400,18 +405,57 @@ void writeBuildToFile(BuildInfo buildInfo) {
 	// Create file
 	std::ofstream out(buildInfo.path, std::ios::binary);
 
+	// Write the build file version number
+	out.write(reinterpret_cast<char*>(&buildFileVersionNumber), sizeof buildFileVersionNumber);
+
+	// Write the time of creation
+	fs::path timeOfCreationAsPath = buildInfo.timeOfCreation;
+	std::string timeOfCreationAsString = timeOfCreationAsPath.string();
+	size_t timeOfCreationStringSize = timeOfCreationAsString.size();
+	out.write(reinterpret_cast<char*>(&timeOfCreationStringSize), sizeof timeOfCreationStringSize);
+	out.write((timeOfCreationAsString.c_str()), timeOfCreationStringSize);
+
 	// Write the depth, width and height of the build
 	out.write(reinterpret_cast<char*>(&buildInfo.depth), sizeof buildInfo.depth);
 	out.write(reinterpret_cast<char*>(&buildInfo.width), sizeof buildInfo.width);
 	out.write(reinterpret_cast<char*>(&buildInfo.height), sizeof buildInfo.height);
 
+	// Write the size of the native materials map
+	size_t nativeMaterialsMapSize = buildInfo.nativeMaterials.size();
+	out.write(reinterpret_cast<char*>(&nativeMaterialsMapSize), sizeof nativeMaterialsMapSize);
 
-	// Write the size of the vector
-	size_t vectorSize = buildInfo.blocks.size();
-	out.write(reinterpret_cast<char*>(&vectorSize), sizeof vectorSize);
+	// Write the native materials map data
+	std::map<EBlockType, int>::iterator itN;
+	for (itN = buildInfo.nativeMaterials.begin(); itN != buildInfo.nativeMaterials.end(); itN++) {
+		// Write the type of the native material
+		EBlockType type = itN->first;
+		out.write(reinterpret_cast<char*>(&type), sizeof type);
 
-	// Write the vector data
-	for (size_t i = 0; i < vectorSize; i++) {
+		// Write the amount of the native material
+		out.write(reinterpret_cast<char*>(&itN->second), sizeof itN->second);
+	}
+
+	// Write the size of the custom materials map
+	size_t customMaterialsMapSize = buildInfo.customMaterials.size();
+	out.write(reinterpret_cast<char*>(&customMaterialsMapSize), sizeof customMaterialsMapSize);
+
+	// Write the custom materials map data
+	std::map<UniqueID, int>::iterator itC;
+	for (itC = buildInfo.customMaterials.begin(); itC != buildInfo.customMaterials.end(); itC++) {
+		// Write the ID of the custom material
+		UniqueID uniqueID = itC->first;
+		out.write(reinterpret_cast<char*>(&uniqueID), sizeof uniqueID);
+
+		// Write the amount of the custom material
+		out.write(reinterpret_cast<char*>(&itC->second), sizeof itC->second);
+	}
+
+	// Write the size of the blocks vector
+	size_t blocksVectorSize = buildInfo.blocks.size();
+	out.write(reinterpret_cast<char*>(&blocksVectorSize), sizeof blocksVectorSize);
+
+	// Write the blocks vector data
+	for (size_t i = 0; i < blocksVectorSize; i++) {
 		// Write the location
 		out.write(reinterpret_cast<char*>(&buildInfo.blocks[i].Location.X), sizeof buildInfo.blocks[i].Location.X);
 		out.write(reinterpret_cast<char*>(&buildInfo.blocks[i].Location.Y), sizeof buildInfo.blocks[i].Location.Y);
@@ -425,39 +469,101 @@ void writeBuildToFile(BuildInfo buildInfo) {
 }
 
 BuildInfo readBuildFromFile(fs::path filePath) {
-	std::vector<BlockInfoWithLocation> blocks;
-
 	std::ifstream in(filePath, std::ios::binary);
 
-	// Read the depth, width and height of the build
+	// Read the build file version number
+	int buildFileVersion = 0;
+	in.read(reinterpret_cast<char*>(&buildFileVersion), sizeof buildFileVersion);
+
+	// Variable to store time of creation
+	std::string timeOfCreationAsString;
+
+	// Variables to store depth, width and height
 	int depth = 0, width = 0, height = 0;
-	in.read(reinterpret_cast<char*>(&depth), sizeof depth);
-	in.read(reinterpret_cast<char*>(&width), sizeof width);
-	in.read(reinterpret_cast<char*>(&height), sizeof height);
 
-	// Read the size of the vector
-	size_t vectorSize = 0;
-	in.read(reinterpret_cast<char*>(&vectorSize), sizeof vectorSize);
+	// Variables to store materials
+	std::map<EBlockType, int> nativeMaterials;
+	std::map<UniqueID, int> customMaterials;
+	
+	// Variable to store blocks
+	std::vector<BlockInfoWithLocation> blocks;
 
-	// Read the vector data
-	for (size_t i = 0; i < vectorSize; i++) {
-		BlockInfoWithLocation block;
+	switch (buildFileVersion) {
+	case 1:
+		// Read the time of creation
+		size_t timeOfCreationStringSize = 0;
+		in.read(reinterpret_cast<char*>(&timeOfCreationStringSize), sizeof timeOfCreationStringSize);
+		timeOfCreationAsString.resize(timeOfCreationStringSize);
+		in.read(&timeOfCreationAsString[0], timeOfCreationStringSize);
 
-		// Read the location
-		in.read(reinterpret_cast<char*>(&block.Location.X), sizeof block.Location.X);
-		in.read(reinterpret_cast<char*>(&block.Location.Y), sizeof block.Location.Y);
-		in.read(reinterpret_cast<char*>(&block.Location.Z), sizeof block.Location.Z);
+		// Read the depth, width and height of the build
+		in.read(reinterpret_cast<char*>(&depth), sizeof depth);
+		in.read(reinterpret_cast<char*>(&width), sizeof width);
+		in.read(reinterpret_cast<char*>(&height), sizeof height);
 
-		// Read the type
-		in.read(reinterpret_cast<char*>(&block.Info.Type), sizeof block.Info.Type);
-		in.read(reinterpret_cast<char*>(&block.Info.CustomBlockID), sizeof block.Info.CustomBlockID);
-		in.read(reinterpret_cast<char*>(&block.Info.Rotation), sizeof block.Info.Rotation);
-		
-		// Add to the vector
-		blocks.push_back(block);
+		// Read the size of the native materials map
+		size_t nativeMaterialsMapSize = 0;
+		in.read(reinterpret_cast<char*>(&nativeMaterialsMapSize), sizeof nativeMaterialsMapSize);
+
+		// Read the native materials map data
+		for (size_t i = 0; i < nativeMaterialsMapSize; i++) {
+			// Read the type
+			EBlockType type;
+			in.read(reinterpret_cast<char*>(&type), sizeof type);
+			
+			// Read the amount
+			int amount = 0;
+			in.read(reinterpret_cast<char*>(&amount), sizeof amount);
+
+			// Put into map
+			nativeMaterials[type] = amount;
+		}
+
+		// Read the size of the custom materials map
+		size_t customMaterialsMapSize = 0;
+		in.read(reinterpret_cast<char*>(&customMaterialsMapSize), sizeof customMaterialsMapSize);
+
+		// Read the custom materials map data
+		for (size_t i = 0; i < customMaterialsMapSize; i++) {
+			// Read the ID
+			UniqueID uniqueID;
+			in.read(reinterpret_cast<char*>(&uniqueID), sizeof uniqueID);
+
+			// Read the amount
+			int amount = 0;
+			in.read(reinterpret_cast<char*>(&amount), sizeof amount);
+
+			// Put into map
+			customMaterials[uniqueID] = amount;
+		}
+
+		// Read the size of the blocks vector
+		size_t blocksVectorSize = 0;
+		in.read(reinterpret_cast<char*>(&blocksVectorSize), sizeof blocksVectorSize);
+
+		// Read the blocks vector data
+		for (size_t i = 0; i < blocksVectorSize; i++) {
+			BlockInfoWithLocation block;
+
+			// Read the location
+			in.read(reinterpret_cast<char*>(&block.Location.X), sizeof block.Location.X);
+			in.read(reinterpret_cast<char*>(&block.Location.Y), sizeof block.Location.Y);
+			in.read(reinterpret_cast<char*>(&block.Location.Z), sizeof block.Location.Z);
+
+			// Read the type
+			in.read(reinterpret_cast<char*>(&block.Info.Type), sizeof block.Info.Type);
+			in.read(reinterpret_cast<char*>(&block.Info.CustomBlockID), sizeof block.Info.CustomBlockID);
+			in.read(reinterpret_cast<char*>(&block.Info.Rotation), sizeof block.Info.Rotation);
+
+			// Add to the vector
+			blocks.push_back(block);
+		}
+		break;
 	}
 
-	return BuildInfo(filePath, blocks, depth, width, height);
+	fs::path timeOfCreationAsPath = timeOfCreationAsString;
+	std::wstring timeOfCreation = timeOfCreationAsPath.wstring();
+	return BuildInfo(filePath, timeOfCreation, depth, width, height, nativeMaterials, customMaterials, blocks);
 }
 
 /*
@@ -482,11 +588,27 @@ void refreshBuilds() {
 		BuildInfo buildInfo = readBuildFromFile(path);
 
 		int id = GetRandomInt<1, 2147483646>();
-		file << path.filename().replace_extension().string() << '|' << id << '|' << buildInfo.depth << '|' << buildInfo.width << '|' << buildInfo.height <<  ':';
+		file << path.filename().replace_extension().string() << '|' << id << '|' << buildInfo.depth << '|' << buildInfo.width << '|' << buildInfo.height << '|';
+
+		std::map<EBlockType, int>::iterator itN;
+		for (itN = buildInfo.nativeMaterials.begin(); itN != buildInfo.nativeMaterials.end(); itN++) {
+			file << (int)itN->first << '.' << itN->second << ',';
+		}
+
+		file << '-';
+
+		std::map<UniqueID, int>::iterator itC;
+		for (itC = buildInfo.customMaterials.begin(); itC != buildInfo.customMaterials.end(); itC++) {
+			file << (int)itC->first << '.' << itC->second << ',';
+		}
+
+		fs::path timeOfCreationAsPath = buildInfo.timeOfCreation;
+		std::string timeOfCreationAsString = timeOfCreationAsPath.string();
+		file << '|' << timeOfCreationAsString << '\n';
 
 		builds.insert({ id, buildInfo });
 	}
-
+	
 	SpawnBPModActor(GetPlayerLocation(), L"CreativeMenu", L"RefreshBuilds");
 }
 
@@ -499,8 +621,6 @@ void removeBuild(int id) {
 }
 
 void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
-	std::vector<BlockInfoWithLocation> selection;
-
 	int64_t xMin = min(location1.X, location2.X);
 	int64_t xMax = max(location1.X, location2.X);
 	int64_t yMin = min(location1.Y, location2.Y);
@@ -512,15 +632,35 @@ void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
 
 	CoordinateInBlocks location;
 	BlockInfo type;
+	std::vector<BlockInfoWithLocation> selection;
+	std::map<EBlockType, int> nativeMaterials;
+	std::map<UniqueID, int> customMaterials;
 	for (int64_t x = xMin; x <= xMax; x++) {
 		for (int64_t y = yMin; y <= yMax; y++) {
 			for (int16_t z = zMin; z <= zMax; z++) {
 				location = CoordinateInBlocks(x, y, z);
 				type = GetBlock(location);
+
+				// Add the type to the correct materials map
+				if (type.Type == EBlockType::ModBlock) {
+					customMaterials[type.CustomBlockID] += 1;
+				}
+				else {
+					nativeMaterials[type.Type] += 1;
+				}
 				selection.push_back(BlockInfoWithLocation(type, location - startLocation));
 			}
 		}
 	}
+
+	// Remove the materials that should not be shown if they are present
+	nativeMaterials.erase(EBlockType::Air);
+	nativeMaterials.erase(EBlockType::Flower1);
+	nativeMaterials.erase(EBlockType::Flower2);
+	nativeMaterials.erase(EBlockType::Flower3);
+	nativeMaterials.erase(EBlockType::Flower4);
+	nativeMaterials.erase(EBlockType::FlowerRainbow);
+	nativeMaterials.erase(EBlockType::GrassFoliage);
 
 	std::time_t time = std::time(nullptr);
 	std::tm timestamp;
@@ -531,7 +671,10 @@ void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
 
 	fs::path filePath = savedBuildsPath / nameOfFile;
 
-	BuildInfo buildInfo = BuildInfo(filePath, selection, (int) (xMax - xMin), (int) (yMax - yMin), zMax - zMin);
+
+	std::wstringstream wssOther;
+	wssOther << std::put_time(&timestamp, L"%d %B %Y at %H:%M:%S");
+	BuildInfo buildInfo = BuildInfo(filePath, wssOther.str(), (int)(xMax - xMin), (int)(yMax - yMin), zMax - zMin, nativeMaterials, customMaterials, selection);
 
 	writeBuildToFile(buildInfo);
 
