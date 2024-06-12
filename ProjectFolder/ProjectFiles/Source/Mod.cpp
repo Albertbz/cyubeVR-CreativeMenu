@@ -37,6 +37,11 @@ const int Remove = 1136264579;
 const int Open = 1926803967;
 const int RegisterLoadID = 756713455;
 const int SetLoad = 1836453716;
+const int LoadRotationPositiveY = 2027769099;
+const int LoadRotationNegativeX = 719875352;
+const int LoadRotationNegativeY = 1299106903;
+const int LoadRotationPositiveX = 1007662264;
+const int CopyBuildInfoToClipboard = 65460537;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
@@ -51,12 +56,16 @@ std::stack<std::vector<BlockInfoWithLocation>> undoOperations;
 std::stack<std::vector<BlockInfoWithLocation>> redoOperations;
 void* hintText;
 int loadID = 0;
+enum Rotation { PositiveY, NegativeX, NegativeY, PositiveX };
+Rotation currentLoadRotation = PositiveY;
+enum RotationDirection { Left, Right, Opposite };
 
 int timesToIgnoreBlockPlacement = 0;
 bool registerFillType = false;
 bool registerReplaceType = false;
 bool registerRemove = false;
 bool registerLoad = false;
+bool registerCopyBuildInfoToClipboard = false;
 
 namespace fs = std::filesystem;
 
@@ -64,6 +73,7 @@ fs::path savedBuildsPath;
 
 struct BuildInfo {
 	fs::path path;
+	std::wstring name;
 	std::wstring timeOfCreation;
 	int depth;
 	int width;
@@ -563,7 +573,7 @@ BuildInfo readBuildFromFile(fs::path filePath) {
 
 	fs::path timeOfCreationAsPath = timeOfCreationAsString;
 	std::wstring timeOfCreation = timeOfCreationAsPath.wstring();
-	return BuildInfo(filePath, timeOfCreation, depth, width, height, nativeMaterials, customMaterials, blocks);
+	return BuildInfo(filePath, filePath.filename().replace_extension().wstring(), timeOfCreation, depth, width, height, nativeMaterials, customMaterials, blocks);
 }
 
 /*
@@ -674,7 +684,7 @@ void saveSelection(CoordinateInBlocks location1, CoordinateInBlocks location2) {
 
 	std::wstringstream wssOther;
 	wssOther << std::put_time(&timestamp, L"%d %B %Y at %H:%M:%S");
-	BuildInfo buildInfo = BuildInfo(filePath, wssOther.str(), (int)(xMax - xMin), (int)(yMax - yMin), zMax - zMin, nativeMaterials, customMaterials, selection);
+	BuildInfo buildInfo = BuildInfo(filePath, nameOfFile, wssOther.str(), (int)(xMax - xMin), (int)(yMax - yMin), zMax - zMin, nativeMaterials, customMaterials, selection);
 
 	writeBuildToFile(buildInfo);
 
@@ -685,13 +695,116 @@ void openBuildsFolder() {
 	ShellExecuteA(NULL, "open", savedBuildsPath.string().c_str(), NULL, NULL, SW_SHOWDEFAULT);
 }
 
-void setBuild(CoordinateInBlocks location, int buildID) {
+void copyBuildInfoToClipboard(int id) {
+	if (!OpenClipboard(0)) {
+		return;
+	}
+	EmptyClipboard();
+	
+	BuildInfo buildInfo = builds.find(id)->second;
+	std::wstring buildInfoString =
+		L"Name: " + buildInfo.name +
+		L"\nCreated: " + buildInfo.timeOfCreation +
+		L"\nSize: " + std::to_wstring(buildInfo.depth) + L"x" + std::to_wstring(buildInfo.width) + L"x" + std::to_wstring(buildInfo.height) + L" (Depth x Width x Height)" +
+		L"\nMaterials:";
+
+	std::map<EBlockType, int>::iterator itN;
+	for (itN = buildInfo.nativeMaterials.begin(); itN != buildInfo.nativeMaterials.end(); itN++) {
+		buildInfoString = buildInfoString + L"\n- " + std::to_wstring(itN->second) + L"x " + std::to_wstring((int)itN->first);
+	}
+
+	std::map<UniqueID, int>::iterator itC;
+	for (itC = buildInfo.customMaterials.begin(); itC != buildInfo.customMaterials.end(); itC++) {
+		buildInfoString = buildInfoString + L"\n- " + std::to_wstring(itC->second) + L"x " + std::to_wstring((int)itC->first);
+	}
+	
+	size_t size_m = sizeof(WCHAR) * (wcslen(buildInfoString.c_str()) + 1);
+	HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, size_m);
+	WCHAR* pchData;
+	pchData = (WCHAR*)GlobalLock(hClipboardData);
+	wcscpy_s(pchData, size_m / sizeof(wchar_t), buildInfoString.c_str());
+	GlobalUnlock(hClipboardData);
+	SetClipboardData(CF_UNICODETEXT, hClipboardData);
+	CloseClipboard();
+}
+
+ERotation rotateBlockRotation(ERotation blockRotation, RotationDirection rotationDirection) {
+	switch (blockRotation) {
+	case ERotation::None:
+		return ERotation::None;
+	case ERotation::Left:
+		switch (rotationDirection) {
+		case Left:
+			return ERotation::Backward;
+		case Right:
+			return ERotation::Forward;
+		case Opposite:
+			return ERotation::Right;
+		}
+	case ERotation::Right:
+		switch (rotationDirection) {
+		case Left:
+			return ERotation::Forward;
+		case Right:
+			return ERotation::Backward;
+		case Opposite:
+			return ERotation::Left;
+		}
+	case ERotation::Forward:
+		switch (rotationDirection) {
+		case Left:
+			return ERotation::Left;
+		case Right:
+			return ERotation::Right;
+		case Opposite:
+			return ERotation::Backward;
+		}
+	case ERotation::Backward:
+		switch (rotationDirection) {
+		case Left:
+			return ERotation::Right;
+		case Right:
+			return ERotation::Left;
+		case Opposite:
+			return ERotation::Forward;
+		}
+	default:
+		return blockRotation;
+	}
+}
+
+BlockInfoWithLocation rotateBlockAroundOrigin(BlockInfoWithLocation block, Rotation rotation) {
+	BlockInfoWithLocation rotatedBlock;
+	rotatedBlock.Location = block.Location;
+	rotatedBlock.Info = block.Info;
+	switch (rotation) {
+	case PositiveY:
+		break;
+	case NegativeX:
+		rotatedBlock.Location = CoordinateInCentimeters(-block.Location.Y, block.Location.X, block.Location.Z);
+		rotatedBlock.Info.Rotation = rotateBlockRotation(block.Info.Rotation, Right);
+		break;
+	case NegativeY:
+		rotatedBlock.Location = CoordinateInCentimeters(-block.Location.X, -block.Location.Y, block.Location.Z);
+		rotatedBlock.Info.Rotation = rotateBlockRotation(block.Info.Rotation, Opposite);
+		break;
+	case PositiveX:
+		rotatedBlock.Location = CoordinateInCentimeters(block.Location.Y, -block.Location.X, block.Location.Z);
+		rotatedBlock.Info.Rotation = rotateBlockRotation(block.Info.Rotation, Left);
+		break;
+	}
+	return rotatedBlock;
+}
+
+void setBuild(CoordinateInBlocks location, int buildID, Rotation buildRotation) {
 	std::vector<BlockInfoWithLocation> changedBlocks;
 
 	BuildInfo buildInfo = builds.find(buildID)->second;
 
+	BlockInfoWithLocation rotatedBlock;
 	for (BlockInfoWithLocation block : buildInfo.blocks) {
-		setBlockAtLocationAndUpdateChangedBlocks(location + block.Location, block.Info, changedBlocks);
+		rotatedBlock = rotateBlockAroundOrigin(block, buildRotation);
+		setBlockAtLocationAndUpdateChangedBlocks(location + rotatedBlock.Location, rotatedBlock.Info, changedBlocks);
 	}
 
 	newOperation(changedBlocks);
@@ -708,7 +821,9 @@ UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, Pl
 								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
 								RegisterFillType, RegisterReplaceType,
 								Set, Undo, Redo,
-								Save, Refresh, Open, Remove, RegisterLoadID, SetLoad }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+								Save, Refresh, Open, Remove, RegisterLoadID, SetLoad,
+								LoadRotationPositiveY, LoadRotationNegativeX, LoadRotationNegativeY, LoadRotationPositiveX,
+								CopyBuildInfoToClipboard }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -797,7 +912,23 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 		registerLoad = true;
 		break;
 	case SetLoad:
-		setBuild(At, loadID);
+		setBuild(At, loadID, currentLoadRotation);
+		break;
+	case LoadRotationPositiveY:
+		currentLoadRotation = PositiveY;
+		break;
+	case LoadRotationNegativeX:
+		currentLoadRotation = NegativeX;
+		break;
+	case LoadRotationNegativeY:
+		currentLoadRotation = NegativeY;
+		break;
+	case LoadRotationPositiveX:
+		currentLoadRotation = PositiveX;
+		break;
+	case CopyBuildInfoToClipboard:
+		timesToIgnoreBlockPlacement = 2;
+		registerCopyBuildInfoToClipboard = true;
 		break;
 	}
 }
@@ -869,6 +1000,10 @@ void Event_AnyBlockPlaced(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 	else if (registerLoad) {
 		registerLoad = false;
 		loadID = Type.CustomBlockID;
+	}
+	else if (registerCopyBuildInfoToClipboard) {
+		registerCopyBuildInfoToClipboard = false;
+		copyBuildInfoToClipboard(Type.CustomBlockID);
 	}
 }
 
