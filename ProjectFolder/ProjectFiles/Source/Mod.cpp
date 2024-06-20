@@ -41,7 +41,6 @@ const int LoadRotationPositiveY = 2027769099;
 const int LoadRotationNegativeX = 719875352;
 const int LoadRotationNegativeY = 1299106903;
 const int LoadRotationPositiveX = 1007662264;
-const int CopyBuildInfoToClipboard = 65460537;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
@@ -65,7 +64,6 @@ bool registerFillType = false;
 bool registerReplaceType = false;
 bool registerRemove = false;
 bool registerLoad = false;
-bool registerCopyBuildInfoToClipboard = false;
 
 namespace fs = std::filesystem;
 
@@ -695,39 +693,6 @@ void openBuildsFolder() {
 	ShellExecuteA(NULL, "open", savedBuildsPath.string().c_str(), NULL, NULL, SW_SHOWDEFAULT);
 }
 
-void copyBuildInfoToClipboard(int id) {
-	if (!OpenClipboard(0)) {
-		return;
-	}
-	EmptyClipboard();
-	
-	BuildInfo buildInfo = builds.find(id)->second;
-	std::wstring buildInfoString =
-		L"Name: " + buildInfo.name +
-		L"\nCreated: " + buildInfo.timeOfCreation +
-		L"\nSize: " + std::to_wstring(buildInfo.depth) + L"x" + std::to_wstring(buildInfo.width) + L"x" + std::to_wstring(buildInfo.height) + L" (Depth x Width x Height)" +
-		L"\nMaterials:";
-
-	std::map<EBlockType, int>::iterator itN;
-	for (itN = buildInfo.nativeMaterials.begin(); itN != buildInfo.nativeMaterials.end(); itN++) {
-		buildInfoString = buildInfoString + L"\n- " + std::to_wstring(itN->second) + L"x " + std::to_wstring((int)itN->first);
-	}
-
-	std::map<UniqueID, int>::iterator itC;
-	for (itC = buildInfo.customMaterials.begin(); itC != buildInfo.customMaterials.end(); itC++) {
-		buildInfoString = buildInfoString + L"\n- " + std::to_wstring(itC->second) + L"x " + std::to_wstring((int)itC->first);
-	}
-	
-	size_t size_m = sizeof(WCHAR) * (wcslen(buildInfoString.c_str()) + 1);
-	HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, size_m);
-	WCHAR* pchData;
-	pchData = (WCHAR*)GlobalLock(hClipboardData);
-	wcscpy_s(pchData, size_m / sizeof(wchar_t), buildInfoString.c_str());
-	GlobalUnlock(hClipboardData);
-	SetClipboardData(CF_UNICODETEXT, hClipboardData);
-	CloseClipboard();
-}
-
 ERotation rotateBlockRotation(ERotation blockRotation, RotationDirection rotationDirection) {
 	switch (blockRotation) {
 	case ERotation::None:
@@ -822,8 +787,7 @@ UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, Pl
 								RegisterFillType, RegisterReplaceType,
 								Set, Undo, Redo,
 								Save, Refresh, Open, Remove, RegisterLoadID, SetLoad,
-								LoadRotationPositiveY, LoadRotationNegativeX, LoadRotationNegativeY, LoadRotationPositiveX,
-								CopyBuildInfoToClipboard }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+								LoadRotationPositiveY, LoadRotationNegativeX, LoadRotationNegativeY, LoadRotationPositiveX }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -926,10 +890,6 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 	case LoadRotationPositiveX:
 		currentLoadRotation = PositiveX;
 		break;
-	case CopyBuildInfoToClipboard:
-		timesToIgnoreBlockPlacement = 2;
-		registerCopyBuildInfoToClipboard = true;
-		break;
 	}
 }
 
@@ -1000,10 +960,6 @@ void Event_AnyBlockPlaced(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 	else if (registerLoad) {
 		registerLoad = false;
 		loadID = Type.CustomBlockID;
-	}
-	else if (registerCopyBuildInfoToClipboard) {
-		registerCopyBuildInfoToClipboard = false;
-		copyBuildInfoToClipboard(Type.CustomBlockID);
 	}
 }
 
