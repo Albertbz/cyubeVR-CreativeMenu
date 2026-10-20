@@ -579,7 +579,7 @@ BuildInfo readBuildFromFile(fs::path filePath) {
 */
 void refreshBuilds() {
 	std::wstring installFolderPath = GetThisModInstallFolderPath();
-	std::wstring ueModsFolderPath = installFolderPath.substr(0, installFolderPath.find(L"APIMods")) + L"UEMods\\CreativeMenu__V2";
+	std::wstring ueModsFolderPath = installFolderPath.substr(0, installFolderPath.find(L"APIMods")) + L"UEMods\\CreativeMenu__V3";
 
 	std::ofstream file = std::ofstream{ ueModsFolderPath + L"\\Builds" };
 
