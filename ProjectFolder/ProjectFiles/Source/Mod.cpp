@@ -17,30 +17,8 @@ const int PlaceableCrystalBlockID = 1169799693;
 const int PlaceableGoldBlockID = 1169799694;
 const int PlaceableIronBlockID = 1169799695;
 
-const int Location1 = 1066913798;
-const int Location2 = 1823382047;
-const int CuboidShape = 1919599248;
-const int SphereShape = 272127303;
-const int CylinderShape = 1174910537;
-const int PyramidShape = 210618550;
-const int ConeShape = 909836507;
-const int ToggleFilled = 1343228703;
-const int ToggleReplace = 1961506553;
-const int RegisterFillType = 1004850721;
-const int RegisterReplaceType = 1172271389;
-const int Set = 666103118;
-const int Undo = 205046945;
-const int Redo = 861326958;
-const int Save = 1564423633;
-const int Refresh = 1953081933;
-const int Remove = 1136264579;
-const int Open = 1926803967;
-const int RegisterLoadID = 756713455;
-const int SetLoad = 1836453716;
-const int LoadRotationPositiveY = 2027769099;
-const int LoadRotationNegativeX = 719875352;
-const int LoadRotationNegativeY = 1299106903;
-const int LoadRotationPositiveX = 1007662264;
+// Placed by the blueprints to make this mod run the command in the Command file
+const int ExecuteCommand = 1481902377;
 
 enum Shape { cuboid, sphere, cylinder, pyramid, cone };
 
@@ -54,16 +32,8 @@ BlockInfo replaceType = BlockInfo(EBlockType::Air);
 std::stack<std::vector<BlockInfoWithLocation>> undoOperations;
 std::stack<std::vector<BlockInfoWithLocation>> redoOperations;
 void* hintText;
-int loadID = 0;
 enum Rotation { PositiveY, NegativeX, NegativeY, PositiveX };
-Rotation currentLoadRotation = PositiveY;
 enum RotationDirection { Left, Right, Opposite };
-
-int timesToIgnoreBlockPlacement = 0;
-bool registerFillType = false;
-bool registerReplaceType = false;
-bool registerRemove = false;
-bool registerLoad = false;
 
 namespace fs = std::filesystem;
 
@@ -575,13 +545,18 @@ BuildInfo readBuildFromFile(fs::path filePath) {
 }
 
 /*
+	The folder of the UE mod, which is where the Builds and Command files are shared with the blueprints.
+*/
+std::wstring getUEModFolderPath() {
+	std::wstring installFolderPath = GetThisModInstallFolderPath();
+	return installFolderPath.substr(0, installFolderPath.find(L"APIMods")) + L"UEMods\\CreativeMenu__V3";
+}
+
+/*
 	Write the names and IDs of builds to file and update the map of builds.
 */
 void refreshBuilds() {
-	std::wstring installFolderPath = GetThisModInstallFolderPath();
-	std::wstring ueModsFolderPath = installFolderPath.substr(0, installFolderPath.find(L"APIMods")) + L"UEMods\\CreativeMenu__V3";
-
-	std::ofstream file = std::ofstream{ ueModsFolderPath + L"\\Builds" };
+	std::ofstream file = std::ofstream{ getUEModFolderPath() + L"\\Builds" };
 
 	builds.clear();
 
@@ -621,9 +596,10 @@ void refreshBuilds() {
 }
 
 void removeBuild(int id) {
-	BuildInfo buildInfo = builds.find(id)->second;
+	auto it = builds.find(id);
+	if (it == builds.end()) return;
 
-	fs::remove(buildInfo.path);
+	fs::remove(it->second.path);
 
 	refreshBuilds();
 }
@@ -694,9 +670,20 @@ void openBuildsFolder() {
 }
 
 ERotation rotateBlockRotation(ERotation blockRotation, RotationDirection rotationDirection) {
+	// Rotatable blocks (wood, planks, custom blocks, ...) are turned about the vertical, matching how rotateBlockAroundOrigin moves their location
+	if (IsBlockRotation(blockRotation)) {
+		switch (rotationDirection) {
+		case Left:
+			return CombineRotations(blockRotation, ERotation::TurnZ270);
+		case Right:
+			return CombineRotations(blockRotation, ERotation::TurnZ90);
+		case Opposite:
+			return CombineRotations(blockRotation, ERotation::TurnZ180);
+		}
+	}
+
+	// Torches point in one of the six directions
 	switch (blockRotation) {
-	case ERotation::None:
-		return ERotation::None;
 	case ERotation::Left:
 		switch (rotationDirection) {
 		case Left:
@@ -762,17 +749,142 @@ BlockInfoWithLocation rotateBlockAroundOrigin(BlockInfoWithLocation block, Rotat
 }
 
 void setBuild(CoordinateInBlocks location, int buildID, Rotation buildRotation) {
+	auto it = builds.find(buildID);
+	if (it == builds.end()) return;
+
 	std::vector<BlockInfoWithLocation> changedBlocks;
 
-	BuildInfo buildInfo = builds.find(buildID)->second;
-
 	BlockInfoWithLocation rotatedBlock;
-	for (BlockInfoWithLocation block : buildInfo.blocks) {
+	for (const BlockInfoWithLocation& block : it->second.blocks) {
 		rotatedBlock = rotateBlockAroundOrigin(block, buildRotation);
 		setBlockAtLocationAndUpdateChangedBlocks(location + rotatedBlock.Location, rotatedBlock.Info, changedBlocks);
 	}
 
 	newOperation(changedBlocks);
+}
+
+std::vector<std::string> splitString(const std::string& string, char delimiter) {
+	std::vector<std::string> parts;
+	std::stringstream ss(string);
+	std::string part;
+	while (std::getline(ss, part, delimiter)) {
+		parts.push_back(part);
+	}
+	return parts;
+}
+
+bool parseBool(const std::string& string) {
+	return string == "1" || string == "true" || string == "True";
+}
+
+/*
+	Convert a yaw in degrees (a multiple of 90, possibly negative) to the rotation a build is loaded with.
+*/
+Rotation rotationFromDegrees(int degrees) {
+	switch (((degrees % 360) + 360) % 360) {
+	case 90:
+		return NegativeX;
+	case 180:
+		return NegativeY;
+	case 270:
+		return PositiveX;
+	default:
+		return PositiveY;
+	}
+}
+
+/*
+	Read the command the blueprints wrote to the Command file and run it. The file is
+	a single line of '|'-separated fields, the first being the name of the command.
+	At is where the ExecuteCommand block was placed, which commands that need a
+	location in the world use. The file is emptied afterwards so a command can
+	never be run twice.
+*/
+void executeCommandFromFile(CoordinateInBlocks At) {
+	std::wstring commandFilePath = getUEModFolderPath() + L"\\Command";
+
+	std::string line;
+	{
+		std::ifstream in(commandFilePath);
+		std::getline(in, line);
+	}
+	std::ofstream{ commandFilePath, std::ios::trunc };
+
+	// Remove a UTF-8 byte order mark and trailing carriage return if present
+	if (line.rfind("\xEF\xBB\xBF", 0) == 0) line.erase(0, 3);
+	if (!line.empty() && line.back() == '\r') line.pop_back();
+
+	std::vector<std::string> args = splitString(line, '|');
+	if (args.empty()) return;
+
+	const std::string& command = args[0];
+
+	try {
+		if (command == "Set") {
+			setShape(shape, fillType, filled, replace, replaceType);
+		}
+		else if (command == "Undo") {
+			if (!undoOperations.empty()) undoOperation();
+		}
+		else if (command == "Redo") {
+			if (!redoOperations.empty()) redoOperation();
+		}
+		else if ((command == "SetFillType" || command == "SetReplaceType") && args.size() >= 3) {
+			// Arguments: block type as its EBlockType number, custom block ID (0 if not a custom block)
+			BlockInfo type = BlockInfo((EBlockType)std::stoi(args[1]), ERotation::None, (UniqueID)std::stoll(args[2]));
+			if (command == "SetFillType") {
+				fillType = type;
+			}
+			else {
+				replaceType = type;
+			}
+		}
+		else if (command == "SetLocation" && args.size() >= 2) {
+			// Arguments: which location (1 or 2). The location itself is where the block was placed.
+			if (args[1] == "1") {
+				location1 = At;
+			}
+			else if (args[1] == "2") {
+				location2 = At;
+			}
+		}
+		else if (command == "SetShape" && args.size() >= 2) {
+			static const std::map<std::string, Shape> shapes = {
+				{ "Cuboid", cuboid }, { "Sphere", sphere }, { "Cylinder", cylinder }, { "Pyramid", pyramid }, { "Cone", cone }
+			};
+			auto it = shapes.find(args[1]);
+			if (it != shapes.end()) shape = it->second;
+		}
+		else if (command == "SetFilled" && args.size() >= 2) {
+			filled = parseBool(args[1]);
+		}
+		else if (command == "SetReplace" && args.size() >= 2) {
+			replace = parseBool(args[1]);
+		}
+		else if (command == "Save") {
+			saveSelection(location1, location2);
+		}
+		else if (command == "Refresh") {
+			refreshBuilds();
+		}
+		else if (command == "OpenFolder") {
+			openBuildsFolder();
+		}
+		else if (command == "RemoveBuild" && args.size() >= 2) {
+			// Arguments: build ID
+			removeBuild(std::stoi(args[1]));
+		}
+		else if (command == "LoadBuild" && args.size() >= 3) {
+			// Arguments: build ID, yaw in degrees. The build is placed where the block was placed.
+			setBuild(At, std::stoi(args[1]), rotationFromDegrees((int)std::lround(std::stod(args[2]))));
+		}
+		else {
+			Log(L"Creative Menu: unknown command '" + fs::path(command).wstring() + L"'");
+		}
+	}
+	catch (const std::exception&) {
+		Log(L"Creative Menu: could not parse command '" + fs::path(line).wstring() + L"'");
+	}
 }
 
 /************************************************************
@@ -781,13 +893,7 @@ void setBuild(CoordinateInBlocks location, int buildID, Rotation buildRotation) 
 
 UniqueID ThisModUniqueIDs[] = { PlaceableCoalBlockID, PlaceableCopperBlockID, PlaceableCrystalBlockID,
 								PlaceableGoldBlockID, PlaceableIronBlockID,
-								ToggleFilled, ToggleReplace,
-								Location1, Location2,
-								CuboidShape, SphereShape, CylinderShape, PyramidShape, ConeShape,
-								RegisterFillType, RegisterReplaceType,
-								Set, Undo, Redo,
-								Save, Refresh, Open, Remove, RegisterLoadID, SetLoad,
-								LoadRotationPositiveY, LoadRotationNegativeX, LoadRotationNegativeY, LoadRotationPositiveX }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
+								ExecuteCommand }; // All the UniqueIDs this mod manages. Functions like Event_BlockPlaced are only called for blocks of IDs mentioned here. 
 
 float TickRate = 0;							 // Set how many times per second Event_Tick() is called. 0 means the Event_Tick() function is never called.
 
@@ -814,81 +920,8 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 	case PlaceableIronBlockID:
 		SetBlock(At, EBlockType::Ore_Iron);
 		break;
-	case Location1:
-		location1 = At;
-		break;
-	case Location2:
-		location2 = At;
-		break;
-	case ToggleFilled:
-		filled = !filled;
-		break;
-	case ToggleReplace:
-		replace = !replace;
-		break;
-	case CuboidShape:
-		shape = cuboid;
-		break;
-	case SphereShape:
-		shape = sphere;
-		break;
-	case CylinderShape:
-		shape = cylinder;
-		break;
-	case PyramidShape:
-		shape = pyramid;
-		break;
-	case ConeShape:
-		shape = cone;
-		break;
-	case RegisterFillType:
-		timesToIgnoreBlockPlacement = 2;
-		registerFillType = true;
-		break;
-	case RegisterReplaceType:
-		timesToIgnoreBlockPlacement = 2;
-		registerReplaceType = true;
-		break;
-	case Set:
-		setShape(shape, fillType, filled, replace, replaceType);
-		break;
-	case Undo:
-		undoOperation();
-		break;
-	case Redo:
-		redoOperation();
-		break;
-	case Save:
-		saveSelection(location1, location2);
-		break;
-	case Refresh:
-		refreshBuilds();
-		break;
-	case Open:
-		openBuildsFolder();
-		break;
-	case Remove:
-		timesToIgnoreBlockPlacement = 2;
-		registerRemove = true;
-		break;
-	case RegisterLoadID:
-		timesToIgnoreBlockPlacement = 2;
-		registerLoad = true;
-		break;
-	case SetLoad:
-		setBuild(At, loadID, currentLoadRotation);
-		break;
-	case LoadRotationPositiveY:
-		currentLoadRotation = PositiveY;
-		break;
-	case LoadRotationNegativeX:
-		currentLoadRotation = NegativeX;
-		break;
-	case LoadRotationNegativeY:
-		currentLoadRotation = NegativeY;
-		break;
-	case LoadRotationPositiveX:
-		currentLoadRotation = PositiveX;
+	case ExecuteCommand:
+		executeCommandFromFile(At);
 		break;
 	}
 }
@@ -942,25 +975,7 @@ void Event_OnExit()
 // Run every time any block is placed by the player
 void Event_AnyBlockPlaced(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 {
-	if (timesToIgnoreBlockPlacement != 0) {
-		timesToIgnoreBlockPlacement--;
-	}
-	else if (registerFillType) {
-		registerFillType = false;
-		fillType = Type;
-	}
-	else if (registerReplaceType) {
-		registerReplaceType = false;
-		replaceType = Type;
-	}
-	else if (registerRemove) {
-		registerRemove = false;
-		removeBuild(Type.CustomBlockID);
-	}
-	else if (registerLoad) {
-		registerLoad = false;
-		loadID = Type.CustomBlockID;
-	}
+
 }
 
 // Run every time any block is destroyed by the player
