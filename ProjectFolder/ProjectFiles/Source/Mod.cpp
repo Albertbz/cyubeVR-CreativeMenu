@@ -694,9 +694,20 @@ void openBuildsFolder() {
 }
 
 ERotation rotateBlockRotation(ERotation blockRotation, RotationDirection rotationDirection) {
+	// Rotatable blocks (wood, planks, custom blocks, ...) are turned about the vertical, matching how rotateBlockAroundOrigin moves their location
+	if (IsBlockRotation(blockRotation)) {
+		switch (rotationDirection) {
+		case Left:
+			return CombineRotations(blockRotation, ERotation::TurnZ270);
+		case Right:
+			return CombineRotations(blockRotation, ERotation::TurnZ90);
+		case Opposite:
+			return CombineRotations(blockRotation, ERotation::TurnZ180);
+		}
+	}
+
+	// Torches point in one of the six directions
 	switch (blockRotation) {
-	case ERotation::None:
-		return ERotation::None;
 	case ERotation::Left:
 		switch (rotationDirection) {
 		case Left:

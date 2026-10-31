@@ -31,7 +31,10 @@ using namespace ModAPI;
 *	If you might call this further away from the player, call .IsValid() on the return value to check that. 
 *	The default radius that is loaded around the player is 300 meters (600 blocks).
 *
-*	Also, it is only valid to call this with a Z location within 0-799. The world in cyubeVR is 800 blocks tall, you can't get a block outside of those bounds.	
+*	Also, it is only valid to call this with a Z location within 0-799. The world in cyubeVR is 800 blocks tall, you can't get a block outside of those bounds.
+*
+*	The returned Rotation is the direction of a torch, or how a block that can be rotated is rotated (ERotation::None if it is not rotated).
+*	Setting a block with the BlockInfo you got from GetBlock places it with the same rotation.
 */
 	BlockInfo GetBlock(CoordinateInBlocks At);
 
@@ -40,17 +43,27 @@ using namespace ModAPI;
 *
 *	Setting the block at coordinate 0, 0, 0 to be Stone (native block):							SetBlock(CoordinateInBlocks(0, 0, 0), EBlockType::Stone);
 *	Setting the block at coordinate 0, 0, 0 to be a custom block of the UniqueID 50000:			SetBlock(CoordinateInBlocks(0, 0, 0), 50000);
+*	A wood log lying along X:																	SetBlock(CoordinateInBlocks(0, 0, 0), EBlockType::TreeWood, ERotation::TurnY90);
+*	A custom block turned a quarter about the vertical:											SetBlock(CoordinateInBlocks(0, 0, 0), 50000, ERotation::TurnZ90);
 *
 *	To delete a block, set it to the type EBlockType::Air
-* 
-*	The Rotation value is only necessary for torches. For all other types, you can ignore it.
-* 
+*
+*	Setting a block where grass or flowers grow (EBlockType::GrassFoliage) removes them and places the block there; GetBlock still shows
+*	the grass until the next game frame. (Older game versions only removed the grass and placed nothing.)
+*
+*	The Rotation value is the direction of a torch, or the rotation of a block that can be rotated: ERotation::TurnX90, TurnZ180, MirrorY
+*	and so on, or any combination of them made with CombineRotations (see ERotation in GameFunctions.h). Wood, planks, wallstone, big
+*	wallstone, flagstone, scaffolding and custom blocks can be rotated. Other blocks (stone, ores, soil, glass, ...) and custom blocks
+*	whose Properties.json says "AllowRotation": false are placed unrotated, whatever the Rotation value. For all types other than
+*	torches you can leave it out (not rotated).
+*
 *	It is only allowed to call SetBlock with a Z location within 0-799. The world in cyubeVR is 800 blocks tall, you can't set a block outside of those bounds.
 	Calling SetBlock with a Z location outside of 0-799 will cause a crash with a helpful crash message explaining that a mod tried to do something at an invalid Z coordinate.
 */
 	bool SetBlock(CoordinateInBlocks At, EBlockType NativeType);
 	bool SetBlock(CoordinateInBlocks At, EBlockType NativeType, ERotation Rotation);
 	bool SetBlock(CoordinateInBlocks At, UniqueID CustomBlockID);
+	bool SetBlock(CoordinateInBlocks At, UniqueID CustomBlockID, ERotation Rotation);
 	bool SetBlock(CoordinateInBlocks At, BlockInfo BlockType);
 
 /*
@@ -245,6 +258,16 @@ using namespace ModAPI;
 */
 	std::vector<CoordinateInBlocks> GetAllCoordinatesInBox(CoordinateInBlocks At, CoordinateInBlocks BoxExtent);
 	std::vector<CoordinateInBlocks> GetAllCoordinatesInRadius(CoordinateInBlocks At, int32_t Radius);	
+
+/*
+*	Delete all trees in a box of blocks: every tree whose trunk stands in a block from At - BoxExtent to At + BoxExtent (inclusive).
+*	Only the big trees, not cacti, desert grass, grass or flowers. Like the other functions, this only works in the chunks that are
+*	currently loaded around the player; trees outside of them stay. The trees disappear in the next game frame and stay deleted
+*	(the world saves it). Game versions older than the one that added this function ignore it (and write that to the log).
+*
+*	Deleting all trees within 20 blocks of the player horizontally and 40 blocks up and down:	DeleteAllTreesInArea(GetPlayerLocation(), CoordinateInBlocks(20, 20, 40));
+*/
+	void DeleteAllTreesInArea(CoordinateInBlocks At, CoordinateInBlocks BoxExtent);
 
 /*
 *	Get a handle to memory that you want to share between multiple different mods. If you don't know what this does, you most likely never need to use it. 
